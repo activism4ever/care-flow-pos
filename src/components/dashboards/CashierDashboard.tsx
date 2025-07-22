@@ -19,6 +19,14 @@ export default function CashierDashboard() {
     contact: '',
   });
   
+  const [tempPatient, setTempPatient] = useState<{
+    name: string;
+    age: string;
+    gender: string;
+    contact: string;
+  } | null>(null);
+  
+  const [activeTab, setActiveTab] = useState('register');
   const [selectedPatient, setSelectedPatient] = useState('');
   const [paymentType, setPaymentType] = useState('');
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -45,53 +53,103 @@ export default function CashierDashboard() {
       return;
     }
 
-    const patientId = registerPatient({
-      name: newPatient.name,
-      age: parseInt(newPatient.age),
-      gender: newPatient.gender as 'male' | 'female' | 'other',
-      contact: newPatient.contact,
-      status: 'registered',
-    });
+    // Store patient temporarily (don't save to database yet)
+    setTempPatient(newPatient);
 
     toast({
-      title: "Patient registered successfully",
-      description: `Patient ID: ${patientId}`,
+      title: "Patient details stored",
+      description: "Now proceed to payment to complete registration",
     });
 
+    // Auto-switch to payment tab
+    setActiveTab('payment');
     setNewPatient({ name: '', age: '', gender: '', contact: '' });
   };
 
   const handlePayment = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedPatient || !paymentType || !paymentAmount) {
+    // Check if we're processing a new patient or existing patient
+    if (tempPatient && !selectedPatient) {
+      // New patient registration + payment
+      if (!paymentType || !paymentAmount) {
+        toast({
+          title: "Please fill in payment details",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // First register the patient
+      const patientId = registerPatient({
+        name: tempPatient.name,
+        age: parseInt(tempPatient.age),
+        gender: tempPatient.gender as 'male' | 'female' | 'other',
+        contact: tempPatient.contact,
+        status: 'registered',
+      });
+
+      // Then add the payment
+      const receiptNumber = addPayment({
+        patientId: patientId,
+        type: paymentType as 'consultation' | 'lab' | 'pharmacy',
+        amount: parseFloat(paymentAmount),
+        description: `${paymentType} payment`,
+      });
+
+      // Update patient status based on payment type
+      if (paymentType === 'consultation') {
+        updatePatientStatus(patientId, 'paid_consultation');
+      }
+
       toast({
-        title: "Please fill in all payment fields",
+        title: "Patient registered and payment processed",
+        description: `Patient ID: ${patientId}, Receipt: ${receiptNumber}`,
+      });
+
+      // Clear temporary data and switch to receipts tab
+      setTempPatient(null);
+      setPaymentType('');
+      setPaymentAmount('');
+      setActiveTab('receipts');
+      
+    } else if (selectedPatient && !tempPatient) {
+      // Existing patient payment
+      if (!paymentType || !paymentAmount) {
+        toast({
+          title: "Please fill in all payment fields",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const receiptNumber = addPayment({
+        patientId: selectedPatient,
+        type: paymentType as 'consultation' | 'lab' | 'pharmacy',
+        amount: parseFloat(paymentAmount),
+        description: `${paymentType} payment`,
+      });
+
+      // Update patient status based on payment type
+      if (paymentType === 'consultation') {
+        updatePatientStatus(selectedPatient, 'paid_consultation');
+      }
+
+      toast({
+        title: "Payment processed successfully",
+        description: `Receipt: ${receiptNumber}`,
+      });
+
+      setSelectedPatient('');
+      setPaymentType('');
+      setPaymentAmount('');
+      setActiveTab('receipts');
+    } else {
+      toast({
+        title: "Please select a patient or complete registration first",
         variant: "destructive",
       });
-      return;
     }
-
-    const receiptNumber = addPayment({
-      patientId: selectedPatient,
-      type: paymentType as 'consultation' | 'lab' | 'pharmacy',
-      amount: parseFloat(paymentAmount),
-      description: `${paymentType} payment`,
-    });
-
-    // Update patient status based on payment type
-    if (paymentType === 'consultation') {
-      updatePatientStatus(selectedPatient, 'paid_consultation');
-    }
-
-    toast({
-      title: "Payment processed successfully",
-      description: `Receipt: ${receiptNumber}`,
-    });
-
-    setSelectedPatient('');
-    setPaymentType('');
-    setPaymentAmount('');
   };
 
   const registeredPatients = getPatientsByStatus('registered');
@@ -144,7 +202,7 @@ export default function CashierDashboard() {
           </Card>
         </div>
 
-        <Tabs defaultValue="register" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="register">Register Patient</TabsTrigger>
             <TabsTrigger value="payment">Process Payment</TabsTrigger>
@@ -231,23 +289,39 @@ export default function CashierDashboard() {
                   Collect payments for consultations, lab tests, or medications
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+               <CardContent>
                 <form onSubmit={handlePayment} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="patient">Select Patient</Label>
-                    <Select value={selectedPatient} onValueChange={setSelectedPatient}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose patient" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {patients.map((patient) => (
-                          <SelectItem key={patient.id} value={patient.id}>
-                            {patient.name} ({patient.id})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {tempPatient ? (
+                    <div className="p-4 bg-muted rounded-lg border">
+                      <h4 className="font-medium mb-2">New Patient Registration</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <span className="text-muted-foreground">Name:</span>
+                        <span>{tempPatient.name}</span>
+                        <span className="text-muted-foreground">Age:</span>
+                        <span>{tempPatient.age}</span>
+                        <span className="text-muted-foreground">Gender:</span>
+                        <span className="capitalize">{tempPatient.gender}</span>
+                        <span className="text-muted-foreground">Contact:</span>
+                        <span>{tempPatient.contact}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label htmlFor="patient">Select Patient</Label>
+                      <Select value={selectedPatient} onValueChange={setSelectedPatient}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose patient" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {patients.map((patient) => (
+                            <SelectItem key={patient.id} value={patient.id}>
+                              {patient.name} ({patient.id})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
