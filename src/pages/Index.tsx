@@ -1,14 +1,32 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useAuthStore } from '@/stores/authStore';
+import Login from '@/components/Login';
+import CashierDashboard from '@/components/dashboards/CashierDashboard';
+import DoctorDashboard from '@/components/dashboards/DoctorDashboard';
+import LabDashboard from '@/components/dashboards/LabDashboard';
+import PharmacyDashboard from '@/components/dashboards/PharmacyDashboard';
 
 const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
-  );
+  const { isAuthenticated, user } = useAuthStore();
+
+  if (!isAuthenticated || !user) {
+    return <Login />;
+  }
+
+  // Route to appropriate dashboard based on user role
+  switch (user.role) {
+    case 'cashier':
+      return <CashierDashboard />;
+    case 'doctor':
+      return <DoctorDashboard />;
+    case 'lab':
+      return <LabDashboard />;
+    case 'pharmacy':
+      return <PharmacyDashboard />;
+    case 'admin':
+      return <CashierDashboard />; // Default to cashier for now
+    default:
+      return <Login />;
+  }
 };
 
 export default Index;
