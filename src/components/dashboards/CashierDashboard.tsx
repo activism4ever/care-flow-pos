@@ -80,13 +80,13 @@ export default function CashierDashboard() {
         return;
       }
 
-      // First register the patient
+      // First register the patient with payment_pending status
       const patientId = registerPatient({
         name: tempPatient.name,
         age: parseInt(tempPatient.age),
         gender: tempPatient.gender as 'male' | 'female' | 'other',
         contact: tempPatient.contact,
-        status: 'registered',
+        status: 'payment_pending',
       });
 
       // Then add the payment
@@ -100,6 +100,8 @@ export default function CashierDashboard() {
       // Update patient status based on payment type
       if (paymentType === 'consultation') {
         updatePatientStatus(patientId, 'paid_consultation');
+      } else {
+        updatePatientStatus(patientId, 'registered');
       }
 
       toast({
@@ -152,6 +154,7 @@ export default function CashierDashboard() {
     }
   };
 
+  const pendingPaymentPatients = getPatientsByStatus('payment_pending');
   const registeredPatients = getPatientsByStatus('registered');
   const consultationPaidPatients = getPatientsByStatus('paid_consultation');
   const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -173,11 +176,11 @@ export default function CashierDashboard() {
           
           <Card className="bg-gradient-card border-0 shadow-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Registration</CardTitle>
+              <CardTitle className="text-sm font-medium">Pending Payment</CardTitle>
               <UserPlus className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{registeredPatients.length}</div>
+              <div className="text-2xl font-bold">{pendingPaymentPatients.length}</div>
             </CardContent>
           </Card>
           

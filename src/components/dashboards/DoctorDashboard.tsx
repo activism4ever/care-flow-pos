@@ -25,6 +25,7 @@ export default function DoctorDashboard() {
 
   const { 
     getPatientsByStatus, 
+    getPatientPayments,
     patients, 
     addDiagnosis,
     updatePatientStatus,
@@ -35,7 +36,9 @@ export default function DoctorDashboard() {
   const { user } = useAuthStore();
   const { toast } = useToast();
 
-  const paidPatients = getPatientsByStatus('paid_consultation');
+  const paidPatients = getPatientsByStatus('paid_consultation').filter(p => 
+    getPatientPayments(p.id).some(payment => payment.type === 'consultation')
+  );
   const diagnosedPatients = getPatientsByStatus('diagnosed');
 
   const handleDiagnosis = () => {

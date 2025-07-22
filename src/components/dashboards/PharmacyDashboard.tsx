@@ -13,8 +13,14 @@ export default function PharmacyDashboard() {
     services, 
     diagnoses,
     completeService,
-    getPatientPayments 
+    getPatientPayments,
+    getPatientsByStatus 
   } = useHospitalStore();
+
+  // Only show pharmacy services for patients who have paid for medications
+  const paidPharmacyPatients = getPatientsByStatus('pharmacy_referred').filter(p => 
+    getPatientPayments(p.id).some(payment => payment.type === 'pharmacy')
+  );
   
   const { toast } = useToast();
 

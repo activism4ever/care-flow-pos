@@ -13,8 +13,14 @@ export default function LabDashboard() {
     services, 
     payments, 
     completeService,
-    getPatientPayments 
+    getPatientPayments,
+    getPatientsByStatus 
   } = useHospitalStore();
+
+  // Only show lab services for patients who have paid for lab tests
+  const paidLabPatients = getPatientsByStatus('lab_referred').filter(p => 
+    getPatientPayments(p.id).some(payment => payment.type === 'lab')
+  );
   
   const { toast } = useToast();
 

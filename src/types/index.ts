@@ -12,7 +12,7 @@ export interface Patient {
   gender: 'male' | 'female' | 'other';
   contact: string;
   registeredAt: Date;
-  status: 'registered' | 'paid_consultation' | 'diagnosed' | 'lab_referred' | 'pharmacy_referred' | 'completed';
+  status: 'draft' | 'payment_pending' | 'registered' | 'paid_consultation' | 'diagnosed' | 'lab_referred' | 'pharmacy_referred' | 'completed';
 }
 
 export interface Payment {
