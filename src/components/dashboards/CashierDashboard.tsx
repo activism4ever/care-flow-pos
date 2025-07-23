@@ -35,8 +35,10 @@ export default function CashierDashboard() {
     registerPatient, 
     addPayment, 
     updatePatientStatus, 
+    updateServiceStatus,
     patients, 
     payments,
+    services,
     getPatientsByStatus 
   } = useHospitalStore();
   
@@ -132,9 +134,27 @@ export default function CashierDashboard() {
         description: `${paymentType} payment`,
       });
 
-      // Update patient status based on payment type
+      // Update patient status and mark services as paid
       if (paymentType === 'consultation') {
         updatePatientStatus(selectedPatient, 'paid_consultation');
+      } else {
+        // Mark the corresponding service as paid
+        const serviceToUpdate = services.find(s => 
+          s.patientId === selectedPatient && 
+          s.serviceType === paymentType && 
+          s.status === 'pending'
+        );
+        if (serviceToUpdate) {
+          // Update service status to paid
+          updateServiceStatus(serviceToUpdate.id, 'paid');
+          
+          // Update patient status
+          if (paymentType === 'lab') {
+            updatePatientStatus(selectedPatient, 'lab_referred');
+          } else if (paymentType === 'pharmacy') {
+            updatePatientStatus(selectedPatient, 'pharmacy_referred');
+          }
+        }
       }
 
       toast({
@@ -157,6 +177,7 @@ export default function CashierDashboard() {
   const pendingPaymentPatients = getPatientsByStatus('payment_pending');
   const registeredPatients = getPatientsByStatus('registered');
   const consultationPaidPatients = getPatientsByStatus('paid_consultation');
+  const pendingServices = services.filter(s => s.status === 'pending');
   const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0);
 
   return (
@@ -281,19 +302,74 @@ export default function CashierDashboard() {
             </Card>
           </TabsContent>
           
-          <TabsContent value="payment">
-            <Card className="bg-gradient-card border-0 shadow-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5" />
-                  Process Payment
-                </CardTitle>
-                <CardDescription>
-                  Collect payments for consultations, lab tests, or medications
-                </CardDescription>
-              </CardHeader>
+           <TabsContent value="payment">
+            <div className="space-y-6">
+              {/* Pending Services */}
+              {pendingServices.length > 0 && (
+                <Card className="bg-gradient-card border-0 shadow-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Receipt className="w-5 h-5" />
+                      Pending Services Payment
+                    </CardTitle>
+                    <CardDescription>
+                      Services referred by doctors awaiting payment
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {pendingServices.map((service) => {
+                        const patient = patients.find(p => p.id === service.patientId);
+                        const isLabService = service.serviceType === 'lab';
+                        
+                        return (
+                          <div key={service.id} className="p-4 border border-border rounded-lg space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium">{patient?.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Patient ID: {patient?.id}
+                                </p>
+                                <Badge variant={isLabService ? "secondary" : "outline"}>
+                                  {isLabService ? "Lab Tests" : "Pharmacy"}
+                                </Badge>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-lg">₦{service.totalAmount.toLocaleString()}</p>
+                                <Badge variant="destructive">Payment Required</Badge>
+                              </div>
+                            </div>
+                            <Button 
+                              variant="success" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedPatient(service.patientId);
+                                setPaymentType(service.serviceType);
+                                setPaymentAmount(service.totalAmount.toString());
+                              }}
+                            >
+                              Process Payment
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card className="bg-gradient-card border-0 shadow-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="w-5 h-5" />
+                    Process Payment
+                  </CardTitle>
+                  <CardDescription>
+                    Collect payments for consultations, lab tests, or medications
+                  </CardDescription>
+                </CardHeader>
                <CardContent>
-                <form onSubmit={handlePayment} className="space-y-4">
+                  <form onSubmit={handlePayment} className="space-y-4">
                   {tempPatient ? (
                     <div className="p-4 bg-muted rounded-lg border">
                       <h4 className="font-medium mb-2">New Patient Registration</h4>
@@ -358,9 +434,10 @@ export default function CashierDashboard() {
                     Process Payment
                   </Button>
                 </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
+               </CardContent>
+             </Card>
+            </div>
+           </TabsContent>
           
           <TabsContent value="receipts">
             <Card className="bg-gradient-card border-0 shadow-card">

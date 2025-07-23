@@ -25,7 +25,7 @@ export default function PharmacyDashboard() {
   const { toast } = useToast();
 
   const pharmacyServices = services.filter(s => s.serviceType === 'pharmacy');
-  const pendingPrescriptions = pharmacyServices.filter(s => s.status === 'pending');
+  const pendingPrescriptions = pharmacyServices.filter(s => s.status === 'paid');
   const dispensedPrescriptions = pharmacyServices.filter(s => s.status === 'completed');
 
   const handleDispenseMedication = (serviceId: string) => {
@@ -36,10 +36,6 @@ export default function PharmacyDashboard() {
     });
   };
 
-  const isServicePaid = (service: any) => {
-    const patientPayments = getPatientPayments(service.patientId);
-    return patientPayments.some(p => p.type === 'pharmacy' && p.amount >= service.totalAmount);
-  };
 
   const getPatientDiagnosis = (patientId: string) => {
     return diagnoses.find(d => d.patientId === patientId);
@@ -101,7 +97,6 @@ export default function PharmacyDashboard() {
                   pendingPrescriptions.map((service) => {
                     const patient = patients.find(p => p.id === service.patientId);
                     const diagnosis = getPatientDiagnosis(service.patientId);
-                    const isPaid = isServicePaid(service);
                     
                     return (
                       <div key={service.id} className="p-4 border border-border rounded-lg space-y-3">
@@ -119,9 +114,7 @@ export default function PharmacyDashboard() {
                           </div>
                           <div className="text-right">
                             <p className="font-bold">₦{service.totalAmount.toLocaleString()}</p>
-                            <Badge variant={isPaid ? "default" : "destructive"}>
-                              {isPaid ? "Paid" : "Unpaid"}
-                            </Badge>
+                            <Badge variant="default">Paid</Badge>
                           </div>
                         </div>
                         
@@ -145,23 +138,14 @@ export default function PharmacyDashboard() {
                           </div>
                         </div>
                         
-                        {isPaid ? (
-                          <Button 
-                            onClick={() => handleDispenseMedication(service.id)}
-                            variant="success" 
-                            className="w-full"
-                          >
-                            <Package className="w-4 h-4" />
-                            Dispense Medication
-                          </Button>
-                        ) : (
-                          <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-lg">
-                            <AlertCircle className="w-4 h-4 text-destructive" />
-                            <span className="text-sm text-destructive">
-                              Waiting for payment confirmation
-                            </span>
-                          </div>
-                        )}
+                        <Button 
+                          onClick={() => handleDispenseMedication(service.id)}
+                          variant="success" 
+                          className="w-full"
+                        >
+                          <Package className="w-4 h-4" />
+                          Dispense Medication
+                        </Button>
                       </div>
                     );
                   })

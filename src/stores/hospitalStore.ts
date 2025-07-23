@@ -13,6 +13,7 @@ interface HospitalState {
   updatePatientStatus: (patientId: string, status: Patient['status']) => void;
   addDiagnosis: (diagnosis: Omit<Diagnosis, 'id' | 'createdAt'>) => void;
   addService: (service: Omit<PatientService, 'id'>) => string;
+  updateServiceStatus: (serviceId: string, status: PatientService['status']) => void;
   completeService: (serviceId: string) => void;
   
   // Getters
@@ -121,6 +122,14 @@ export const useHospitalStore = create<HospitalState>((set, get) => ({
     return id;
   },
   
+  updateServiceStatus: (serviceId, status) => {
+    set((state) => ({
+      services: state.services.map(s => 
+        s.id === serviceId ? { ...s, status } : s
+      ),
+    }));
+  },
+
   completeService: (serviceId) => {
     set((state) => ({
       services: state.services.map(s => 

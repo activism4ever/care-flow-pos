@@ -25,7 +25,7 @@ export default function LabDashboard() {
   const { toast } = useToast();
 
   const labServices = services.filter(s => s.serviceType === 'lab');
-  const pendingTests = labServices.filter(s => s.status === 'pending');
+  const pendingTests = labServices.filter(s => s.status === 'paid');
   const completedTests = labServices.filter(s => s.status === 'completed');
 
   const handleCompleteTest = (serviceId: string) => {
