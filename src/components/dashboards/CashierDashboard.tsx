@@ -227,9 +227,10 @@ export default function CashierDashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="register">Register Patient</TabsTrigger>
             <TabsTrigger value="payment">Process Payment</TabsTrigger>
+            <TabsTrigger value="service-payments">Pending Service Payments</TabsTrigger>
             <TabsTrigger value="receipts">View Receipts</TabsTrigger>
           </TabsList>
           
@@ -302,74 +303,19 @@ export default function CashierDashboard() {
             </Card>
           </TabsContent>
           
-           <TabsContent value="payment">
-            <div className="space-y-6">
-              {/* Pending Services */}
-              {pendingServices.length > 0 && (
-                <Card className="bg-gradient-card border-0 shadow-card">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Receipt className="w-5 h-5" />
-                      Pending Services Payment
-                    </CardTitle>
-                    <CardDescription>
-                      Services referred by doctors awaiting payment
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {pendingServices.map((service) => {
-                        const patient = patients.find(p => p.id === service.patientId);
-                        const isLabService = service.serviceType === 'lab';
-                        
-                        return (
-                          <div key={service.id} className="p-4 border border-border rounded-lg space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium">{patient?.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  Patient ID: {patient?.id}
-                                </p>
-                                <Badge variant={isLabService ? "secondary" : "outline"}>
-                                  {isLabService ? "Lab Tests" : "Pharmacy"}
-                                </Badge>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-bold text-lg">₦{service.totalAmount.toLocaleString()}</p>
-                                <Badge variant="destructive">Payment Required</Badge>
-                              </div>
-                            </div>
-                            <Button 
-                              variant="success" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedPatient(service.patientId);
-                                setPaymentType(service.serviceType);
-                                setPaymentAmount(service.totalAmount.toString());
-                              }}
-                            >
-                              Process Payment
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              <Card className="bg-gradient-card border-0 shadow-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="w-5 h-5" />
-                    Process Payment
-                  </CardTitle>
-                  <CardDescription>
-                    Collect payments for consultations, lab tests, or medications
-                  </CardDescription>
-                </CardHeader>
-               <CardContent>
-                  <form onSubmit={handlePayment} className="space-y-4">
+          <TabsContent value="payment">
+            <Card className="bg-gradient-card border-0 shadow-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5" />
+                  Process Payment
+                </CardTitle>
+                <CardDescription>
+                  Collect payments for consultations, lab tests, or medications
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handlePayment} className="space-y-4">
                   {tempPatient ? (
                     <div className="p-4 bg-muted rounded-lg border">
                       <h4 className="font-medium mb-2">New Patient Registration</h4>
@@ -434,10 +380,89 @@ export default function CashierDashboard() {
                     Process Payment
                   </Button>
                 </form>
-               </CardContent>
-             </Card>
-            </div>
-           </TabsContent>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="service-payments">
+            <Card className="bg-gradient-card border-0 shadow-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="w-5 h-5" />
+                  Pending Service Payments
+                </CardTitle>
+                <CardDescription>
+                  Process payments for lab tests and prescriptions referred by doctors
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {pendingServices.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Receipt className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No pending service payments</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pendingServices.map((service) => {
+                      const patient = patients.find(p => p.id === service.patientId);
+                      const isLabService = service.serviceType === 'lab';
+                      
+                      return (
+                        <div key={service.id} className="p-6 border border-border rounded-lg space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2">
+                              <div>
+                                <p className="font-semibold text-lg">{patient?.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Patient ID: {patient?.id} • Contact: {patient?.contact}
+                                </p>
+                              </div>
+                              <Badge variant={isLabService ? "secondary" : "outline"} className="text-xs">
+                                {isLabService ? "Lab Tests" : "Pharmacy"}
+                              </Badge>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-2xl text-primary">₦{service.totalAmount.toLocaleString()}</p>
+                              <Badge variant="destructive">Payment Required</Badge>
+                            </div>
+                          </div>
+                          
+                          {/* Itemized list */}
+                          <div className="border-t pt-4">
+                            <h4 className="font-medium mb-3">Service Details:</h4>
+                            <div className="space-y-2">
+                              {service.items.map((item, index) => (
+                                <div key={index} className="flex justify-between text-sm">
+                                  <span>{item}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-3 pt-4 border-t">
+                            <Button 
+                              variant="default" 
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => {
+                                setSelectedPatient(service.patientId);
+                                setPaymentType(service.serviceType);
+                                setPaymentAmount(service.totalAmount.toString());
+                                setActiveTab('payment');
+                              }}
+                            >
+                              <CreditCard className="w-4 h-4 mr-2" />
+                              Collect Payment
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
           
           <TabsContent value="receipts">
             <Card className="bg-gradient-card border-0 shadow-card">
