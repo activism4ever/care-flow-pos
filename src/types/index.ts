@@ -1,8 +1,10 @@
 export interface User {
   id: string;
   username: string;
-  role: 'cashier' | 'doctor' | 'lab' | 'pharmacy' | 'admin';
+  role: 'cashier' | 'doctor' | 'lab' | 'pharmacy' | 'admin' | 'hod_lab' | 'hod_pharmacy';
   name: string;
+  department?: string;
+  createdAt: Date;
 }
 
 export interface Patient {
@@ -13,6 +15,17 @@ export interface Patient {
   contact: string;
   registeredAt: Date;
   status: 'draft' | 'payment_pending' | 'registered' | 'paid_consultation' | 'diagnosed' | 'lab_referred' | 'pharmacy_referred' | 'completed';
+  isReturning: boolean;
+  visitHistory: Visit[];
+}
+
+export interface Visit {
+  id: string;
+  patientId: string;
+  date: Date;
+  reason: string;
+  referredServices: string[];
+  totalAmount: number;
 }
 
 export interface Payment {

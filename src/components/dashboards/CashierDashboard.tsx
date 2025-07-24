@@ -89,6 +89,8 @@ export default function CashierDashboard() {
         gender: tempPatient.gender as 'male' | 'female' | 'other',
         contact: tempPatient.contact,
         status: 'payment_pending',
+        isReturning: false,
+        visitHistory: []
       });
 
       // Then add the payment

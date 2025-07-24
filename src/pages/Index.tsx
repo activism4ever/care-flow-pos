@@ -4,6 +4,9 @@ import CashierDashboard from '@/components/dashboards/CashierDashboard';
 import DoctorDashboard from '@/components/dashboards/DoctorDashboard';
 import LabDashboard from '@/components/dashboards/LabDashboard';
 import PharmacyDashboard from '@/components/dashboards/PharmacyDashboard';
+import AdminDashboard from '@/components/dashboards/AdminDashboard';
+import HodLabDashboard from '@/components/dashboards/HodLabDashboard';
+import HodPharmacyDashboard from '@/components/dashboards/HodPharmacyDashboard';
 
 const Index = () => {
   const { isAuthenticated, user } = useAuthStore();
@@ -23,7 +26,11 @@ const Index = () => {
     case 'pharmacy':
       return <PharmacyDashboard />;
     case 'admin':
-      return <CashierDashboard />; // Default to cashier for now
+      return <AdminDashboard />;
+    case 'hod_lab':
+      return <HodLabDashboard />;
+    case 'hod_pharmacy':
+      return <HodPharmacyDashboard />;
     default:
       return <Login />;
   }
