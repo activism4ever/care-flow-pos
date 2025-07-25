@@ -18,14 +18,14 @@ export default function HodLabDashboard() {
     to: ''
   });
 
-  const { patients, payments, services } = useHospitalStore();
+  const { patients, payments, services, getLabRevenue } = useHospitalStore();
   const { users } = useAuthStore();
   const { toast } = useToast();
 
   // Lab-specific data
   const labServices = services.filter(s => s.serviceType === 'lab');
   const labPayments = payments.filter(p => p.type === 'lab');
-  const labRevenue = labPayments.reduce((sum, p) => sum + p.amount, 0);
+  const labRevenue = getLabRevenue();
   const completedLabServices = labServices.filter(s => s.status === 'completed');
   const pendingLabServices = labServices.filter(s => s.status === 'pending');
   const paidLabServices = labServices.filter(s => s.status === 'paid');

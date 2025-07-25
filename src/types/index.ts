@@ -31,11 +31,12 @@ export interface Visit {
 export interface Payment {
   id: string;
   patientId: string;
-  type: 'consultation' | 'lab' | 'pharmacy';
+  type: 'consultation' | 'lab' | 'pharmacy' | 'combined';
   amount: number;
   description: string;
   paidAt: Date;
   receiptNumber: string;
+  breakdown?: any[];
 }
 
 export interface Diagnosis {
@@ -70,6 +71,6 @@ export interface PatientService {
   serviceType: 'lab' | 'pharmacy';
   items: string[];
   totalAmount: number;
-  status: 'pending' | 'paid' | 'completed';
+  status: 'pending' | 'paid' | 'completed' | 'dispensed';
   completedAt?: Date;
 }

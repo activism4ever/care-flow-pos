@@ -18,15 +18,15 @@ export default function HodPharmacyDashboard() {
     to: ''
   });
 
-  const { patients, payments, services } = useHospitalStore();
+  const { patients, payments, services, getPharmacyRevenue } = useHospitalStore();
   const { users } = useAuthStore();
   const { toast } = useToast();
 
   // Pharmacy-specific data
   const pharmacyServices = services.filter(s => s.serviceType === 'pharmacy');
   const pharmacyPayments = payments.filter(p => p.type === 'pharmacy');
-  const pharmacyRevenue = pharmacyPayments.reduce((sum, p) => sum + p.amount, 0);
-  const completedPharmacyServices = pharmacyServices.filter(s => s.status === 'completed');
+  const pharmacyRevenue = getPharmacyRevenue();
+  const completedPharmacyServices = pharmacyServices.filter(s => s.status === 'dispensed');
   const pendingPharmacyServices = pharmacyServices.filter(s => s.status === 'pending');
   const paidPharmacyServices = pharmacyServices.filter(s => s.status === 'paid');
   

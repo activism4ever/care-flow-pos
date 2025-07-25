@@ -10,16 +10,25 @@ interface HospitalState {
   // Actions
   registerPatient: (patient: Omit<Patient, 'id' | 'registeredAt'>) => string;
   addPayment: (payment: Omit<Payment, 'id' | 'paidAt' | 'receiptNumber'>) => string;
+  addCombinedPayment: (patientId: string, serviceIds: string[], totalAmount: number, breakdown: any[]) => string;
   updatePatientStatus: (patientId: string, status: Patient['status']) => void;
   addDiagnosis: (diagnosis: Omit<Diagnosis, 'id' | 'createdAt'>) => void;
   addService: (service: Omit<PatientService, 'id'>) => string;
   updateServiceStatus: (serviceId: string, status: PatientService['status']) => void;
   completeService: (serviceId: string) => void;
+  markServiceAsPaid: (serviceId: string) => void;
+  markServiceAsCompleted: (serviceId: string) => void;
+  markServiceAsDispensed: (serviceId: string) => void;
   
   // Getters
   getPatientsByStatus: (status: Patient['status']) => Patient[];
   getPatientPayments: (patientId: string) => Payment[];
   getPatientServices: (patientId: string) => PatientService[];
+  getUnpaidServices: (patientId: string) => PatientService[];
+  getPaidPendingLabServices: () => PatientService[];
+  getPaidPendingPharmacyServices: () => PatientService[];
+  getLabRevenue: () => number;
+  getPharmacyRevenue: () => number;
 }
 
 // Demo lab tests
@@ -150,5 +159,83 @@ export const useHospitalStore = create<HospitalState>((set, get) => ({
   
   getPatientServices: (patientId) => {
     return get().services.filter(s => s.patientId === patientId);
+  },
+
+  addCombinedPayment: (patientId, serviceIds, totalAmount, breakdown) => {
+    const receiptNumber = `RCP${receiptCounter++}`;
+    const payment: Payment = {
+      id: `PAY${Date.now()}`,
+      patientId,
+      type: 'combined',
+      amount: totalAmount,
+      description: 'Combined payment for all services',
+      receiptNumber,
+      paidAt: new Date(),
+    };
+
+    set((state) => ({
+      payments: [...state.payments, payment],
+      services: state.services.map(s => 
+        serviceIds.includes(s.id) ? { ...s, status: 'paid' } : s
+      ),
+    }));
+
+    return receiptNumber;
+  },
+
+  markServiceAsPaid: (serviceId) => {
+    set((state) => ({
+      services: state.services.map(s => 
+        s.id === serviceId ? { ...s, status: 'paid' } : s
+      ),
+    }));
+  },
+
+  markServiceAsCompleted: (serviceId) => {
+    set((state) => ({
+      services: state.services.map(s => 
+        s.id === serviceId ? { ...s, status: 'completed', completedAt: new Date() } : s
+      ),
+    }));
+  },
+
+  markServiceAsDispensed: (serviceId) => {
+    set((state) => ({
+      services: state.services.map(s => 
+        s.id === serviceId ? { ...s, status: 'dispensed', completedAt: new Date() } : s
+      ),
+    }));
+  },
+
+  getUnpaidServices: (patientId) => {
+    return get().services.filter(s => s.patientId === patientId && s.status === 'pending');
+  },
+
+  getPaidPendingLabServices: () => {
+    return get().services.filter(s => 
+      s.serviceType === 'lab' && 
+      s.status === 'paid'
+    );
+  },
+
+  getPaidPendingPharmacyServices: () => {
+    return get().services.filter(s => 
+      s.serviceType === 'pharmacy' && 
+      s.status === 'paid'
+    );
+  },
+
+  getLabRevenue: () => {
+    const labServices = get().services.filter(s => 
+      s.serviceType === 'lab' && (s.status === 'paid' || s.status === 'completed')
+    );
+    return labServices.reduce((total, service) => total + service.totalAmount, 0);
+  },
+
+  getPharmacyRevenue: () => {
+    const pharmacyServices = get().services.filter(s => 
+      s.serviceType === 'pharmacy' && (s.status === 'paid' || s.status === 'dispensed')
+    );
+    return pharmacyServices.reduce((total, service) => total + service.totalAmount, 0);
   },
 }));

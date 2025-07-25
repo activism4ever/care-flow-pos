@@ -34,12 +34,14 @@ export default function CashierDashboard() {
   const { 
     registerPatient, 
     addPayment, 
+    addCombinedPayment,
     updatePatientStatus, 
     updateServiceStatus,
     patients, 
     payments,
     services,
-    getPatientsByStatus 
+    getPatientsByStatus,
+    getUnpaidServices
   } = useHospitalStore();
   
   const { toast } = useToast();
@@ -229,9 +231,10 @@ export default function CashierDashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="register">Register Patient</TabsTrigger>
             <TabsTrigger value="payment">Process Payment</TabsTrigger>
+            <TabsTrigger value="combined-payment">Combined Payment</TabsTrigger>
             <TabsTrigger value="service-payments">Pending Service Payments</TabsTrigger>
             <TabsTrigger value="receipts">View Receipts</TabsTrigger>
           </TabsList>
@@ -382,6 +385,121 @@ export default function CashierDashboard() {
                     Process Payment
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="combined-payment">
+            <Card className="bg-gradient-card border-0 shadow-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5" />
+                  Combined Payment
+                </CardTitle>
+                <CardDescription>
+                  Collect one payment for all services (consultation, lab tests, medications)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="patient-combined">Select Patient</Label>
+                    <Select value={selectedPatient} onValueChange={setSelectedPatient}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose patient" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {patients.map((patient) => (
+                          <SelectItem key={patient.id} value={patient.id}>
+                            {patient.name} ({patient.id})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedPatient && (() => {
+                    const unpaidServices = getUnpaidServices(selectedPatient);
+                    const totalAmount = unpaidServices.reduce((sum, service) => sum + service.totalAmount, 0);
+                    const consultationFee = 2000; // Standard consultation fee
+                    const grandTotal = totalAmount + consultationFee;
+
+                    return (
+                      <div className="space-y-4">
+                        <div className="border rounded-lg p-4 space-y-3">
+                          <h4 className="font-semibold">Service Breakdown</h4>
+                          
+                          {/* Consultation Fee */}
+                          <div className="flex justify-between items-center py-2 border-b">
+                            <span>Consultation Fee</span>
+                            <span className="font-medium">₦{consultationFee.toLocaleString()}</span>
+                          </div>
+                          
+                          {/* Unpaid Services */}
+                          {unpaidServices.map((service) => (
+                            <div key={service.id} className="space-y-2">
+                              <div className="flex justify-between items-center py-2 border-b">
+                                <span className="capitalize">{service.serviceType} Services</span>
+                                <span className="font-medium">₦{service.totalAmount.toLocaleString()}</span>
+                              </div>
+                              <div className="ml-4 space-y-1">
+                                {service.items.map((item, index) => (
+                                  <div key={index} className="text-sm text-muted-foreground">
+                                    • {item}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {/* Total */}
+                          <div className="flex justify-between items-center pt-3 border-t-2 font-bold text-lg">
+                            <span>Total Amount</span>
+                            <span className="text-primary">₦{grandTotal.toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        <Button 
+                          className="w-full" 
+                          variant="success" 
+                          onClick={() => {
+                            if (unpaidServices.length > 0 || consultationFee > 0) {
+                              const breakdown = [
+                                { service: 'Consultation', amount: consultationFee },
+                                ...unpaidServices.map(s => ({ 
+                                  service: `${s.serviceType} services`, 
+                                  amount: s.totalAmount,
+                                  items: s.items 
+                                }))
+                              ];
+                              
+                              const receiptNumber = addCombinedPayment(
+                                selectedPatient, 
+                                unpaidServices.map(s => s.id), 
+                                grandTotal, 
+                                breakdown
+                              );
+                              
+                              updatePatientStatus(selectedPatient, 'paid_consultation');
+                              
+                              toast({
+                                title: "Combined payment processed",
+                                description: `Total: ₦${grandTotal.toLocaleString()}, Receipt: ${receiptNumber}`,
+                              });
+                              
+                              setSelectedPatient('');
+                              setActiveTab('receipts');
+                            }
+                          }}
+                          disabled={unpaidServices.length === 0}
+                        >
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          Collect Payment - ₦{grandTotal.toLocaleString()}
+                        </Button>
+                      </div>
+                    );
+                  })()}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

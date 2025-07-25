@@ -12,7 +12,8 @@ export default function PharmacyDashboard() {
     patients, 
     services, 
     diagnoses,
-    completeService,
+    markServiceAsDispensed,
+    getPaidPendingPharmacyServices,
     getPatientPayments,
     getPatientsByStatus 
   } = useHospitalStore();
@@ -26,10 +27,10 @@ export default function PharmacyDashboard() {
 
   const pharmacyServices = services.filter(s => s.serviceType === 'pharmacy');
   const pendingPrescriptions = pharmacyServices.filter(s => s.status === 'paid');
-  const dispensedPrescriptions = pharmacyServices.filter(s => s.status === 'completed');
+  const dispensedPrescriptions = pharmacyServices.filter(s => s.status === 'dispensed');
 
   const handleDispenseMedication = (serviceId: string) => {
-    completeService(serviceId);
+    markServiceAsDispensed(serviceId);
     toast({
       title: "Medication dispensed",
       description: "Prescription has been marked as dispensed",

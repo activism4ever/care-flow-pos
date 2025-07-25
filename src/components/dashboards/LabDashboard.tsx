@@ -12,7 +12,8 @@ export default function LabDashboard() {
     patients, 
     services, 
     payments, 
-    completeService,
+    markServiceAsCompleted,
+    getPaidPendingLabServices,
     getPatientPayments,
     getPatientsByStatus 
   } = useHospitalStore();
@@ -29,7 +30,7 @@ export default function LabDashboard() {
   const completedTests = labServices.filter(s => s.status === 'completed');
 
   const handleCompleteTest = (serviceId: string) => {
-    completeService(serviceId);
+    markServiceAsCompleted(serviceId);
     toast({
       title: "Lab test completed",
       description: "Test results have been marked as completed",
