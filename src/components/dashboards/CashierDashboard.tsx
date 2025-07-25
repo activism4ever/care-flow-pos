@@ -40,6 +40,7 @@ export default function CashierDashboard() {
     patients, 
     payments,
     services,
+    diagnoses,
     getPatientsByStatus,
     getUnpaidServices
   } = useHospitalStore();
@@ -443,11 +444,20 @@ export default function CashierDashboard() {
                                 <span className="font-medium">₦{service.totalAmount.toLocaleString()}</span>
                               </div>
                               <div className="ml-4 space-y-1">
-                                {service.items.map((item, index) => (
+                                {service.serviceType === 'lab' && service.items.map((item, index) => (
                                   <div key={index} className="text-sm text-muted-foreground">
                                     • {item}
                                   </div>
                                 ))}
+                                {service.serviceType === 'pharmacy' && (() => {
+                                  const patient = patients.find(p => p.id === selectedPatient);
+                                  const diagnosis = diagnoses.find(d => d.patientId === selectedPatient);
+                                  return diagnosis?.prescriptions.map((prescription, index) => (
+                                    <div key={index} className="text-sm text-muted-foreground">
+                                      • {prescription.drugName} (Qty: {prescription.quantity})
+                                    </div>
+                                  ));
+                                })()}
                               </div>
                             </div>
                           ))}
