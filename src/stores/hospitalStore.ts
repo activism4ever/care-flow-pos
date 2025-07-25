@@ -18,7 +18,7 @@ interface HospitalState {
   completeService: (serviceId: string) => void;
   markServiceAsPaid: (serviceId: string) => void;
   markServiceAsCompleted: (serviceId: string) => void;
-  markServiceAsDispensed: (serviceId: string) => void;
+  markServiceAsDispensed: (serviceId: string, dispensedBy?: string) => void;
   
   // Getters
   getPatientsByStatus: (status: Patient['status']) => Patient[];
@@ -199,10 +199,15 @@ export const useHospitalStore = create<HospitalState>((set, get) => ({
     }));
   },
 
-  markServiceAsDispensed: (serviceId) => {
+  markServiceAsDispensed: (serviceId, dispensedBy) => {
     set((state) => ({
       services: state.services.map(s => 
-        s.id === serviceId ? { ...s, status: 'dispensed', completedAt: new Date() } : s
+        s.id === serviceId ? { 
+          ...s, 
+          status: 'dispensed', 
+          completedAt: new Date(),
+          dispensedBy: dispensedBy || 'current-user'
+        } : s
       ),
     }));
   },

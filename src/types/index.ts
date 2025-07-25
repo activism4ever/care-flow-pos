@@ -73,4 +73,5 @@ export interface PatientService {
   totalAmount: number;
   status: 'pending' | 'paid' | 'completed' | 'dispensed';
   completedAt?: Date;
+  dispensedBy?: string; // User ID who dispensed the medication
 }

@@ -30,10 +30,10 @@ export default function PharmacyDashboard() {
   const dispensedPrescriptions = pharmacyServices.filter(s => s.status === 'dispensed');
 
   const handleDispenseMedication = (serviceId: string) => {
-    markServiceAsDispensed(serviceId);
+    markServiceAsDispensed(serviceId, 'pharmacy-user'); // In real app, use actual user ID
     toast({
       title: "Medication dispensed",
-      description: "Prescription has been marked as dispensed",
+      description: "Prescription has been marked as dispensed and moved to dispensed list",
     });
   };
 
