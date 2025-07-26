@@ -462,17 +462,16 @@ export default function CashierDashboard() {
                                 {service.serviceType === 'pharmacy' && (() => {
                                   // Get the diagnosis for this patient to access prescription details
                                   const diagnosis = diagnoses.find(d => d.patientId === selectedPatient);
-                                  const prescriptions = diagnosis?.prescriptions || [];
                                   
-                                  return prescriptions.length > 0 ? (
-                                    prescriptions.map((prescription, index) => (
-                                      <div key={index} className="text-sm text-muted-foreground">
-                                        • {prescription.drugName || "Unnamed Drug"} (Qty: {prescription.quantity})
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div className="text-sm text-muted-foreground">No medications</div>
-                                  );
+                                  if (!diagnosis || !diagnosis.prescriptions || diagnosis.prescriptions.length === 0) {
+                                    return <div className="text-sm text-muted-foreground">No medications prescribed</div>;
+                                  }
+                                  
+                                  return diagnosis.prescriptions.map((prescription, index) => (
+                                    <div key={index} className="text-sm text-muted-foreground">
+                                      • {prescription.drugName || "Unnamed Drug"} (Qty: {prescription.quantity || 1})
+                                    </div>
+                                  ));
                                 })()}
                               </div>
                             </div>
