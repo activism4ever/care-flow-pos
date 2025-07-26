@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { useHospitalStore } from '@/stores/hospitalStore';
+import { useHospitalStore, availableLabTests, availableMedications } from '@/stores/hospitalStore';
 import { UserPlus, CreditCard, Receipt, Users, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
@@ -445,11 +445,16 @@ export default function CashierDashboard() {
                               </div>
                               <div className="ml-4 space-y-1">
                                 {service.serviceType === 'lab' && service.items.length > 0 ? (
-                                  service.items.map((item, index) => (
-                                    <div key={index} className="text-sm text-muted-foreground">
-                                      • {item}
-                                    </div>
-                                  ))
+                                  service.items.map((item, index) => {
+                                    // Map lab test ID to actual test name
+                                    const labTest = availableLabTests.find(test => test.id === item || test.name === item);
+                                    const testName = labTest ? labTest.name : item;
+                                    return (
+                                      <div key={index} className="text-sm text-muted-foreground">
+                                        • {testName}
+                                      </div>
+                                    );
+                                  })
                                 ) : service.serviceType === 'lab' ? (
                                   <div className="text-sm text-muted-foreground">No lab tests</div>
                                 ) : null}
@@ -461,7 +466,7 @@ export default function CashierDashboard() {
                                   return prescriptions.length > 0 ? (
                                     prescriptions.map((prescription, index) => (
                                       <div key={index} className="text-sm text-muted-foreground">
-                                        • {prescription.drugName || 'Unknown medication'} (Qty: {prescription.quantity})
+                                        • {prescription.drugName || "Unknown medication"} (Qty: {prescription.quantity})
                                       </div>
                                     ))
                                   ) : (
