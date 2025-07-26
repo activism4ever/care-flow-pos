@@ -459,21 +459,21 @@ export default function CashierDashboard() {
                                   <div className="text-sm text-muted-foreground">No lab tests</div>
                                 ) : null}
                                 
-                                {service.serviceType === 'pharmacy' && service.items.length > 0 ? (
-                                  service.items.map((item, index) => {
-                                    // Map medication ID to actual medication name
-                                    const medication = availableMedications.find(med => med.id === item || med.name === item);
-                                    const medicationName = medication ? medication.name : item;
-                                    // For quantity, we'll use 1 as default since service items don't have quantity info
-                                    return (
+                                {service.serviceType === 'pharmacy' && (() => {
+                                  // Get the diagnosis for this patient to access prescription details
+                                  const diagnosis = diagnoses.find(d => d.patientId === selectedPatient);
+                                  const prescriptions = diagnosis?.prescriptions || [];
+                                  
+                                  return prescriptions.length > 0 ? (
+                                    prescriptions.map((prescription, index) => (
                                       <div key={index} className="text-sm text-muted-foreground">
-                                        • {medicationName} (Qty: 1)
+                                        • {prescription.drugName || "Unnamed Drug"} (Qty: {prescription.quantity})
                                       </div>
-                                    );
-                                  })
-                                ) : service.serviceType === 'pharmacy' ? (
-                                  <div className="text-sm text-muted-foreground">No medications</div>
-                                ) : null}
+                                    ))
+                                  ) : (
+                                    <div className="text-sm text-muted-foreground">No medications</div>
+                                  );
+                                })()}
                               </div>
                             </div>
                           ))}
