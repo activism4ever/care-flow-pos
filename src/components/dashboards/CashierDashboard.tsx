@@ -444,19 +444,29 @@ export default function CashierDashboard() {
                                 <span className="font-medium">₦{service.totalAmount.toLocaleString()}</span>
                               </div>
                               <div className="ml-4 space-y-1">
-                                {service.serviceType === 'lab' && service.items.map((item, index) => (
-                                  <div key={index} className="text-sm text-muted-foreground">
-                                    • {item}
-                                  </div>
-                                ))}
-                                {service.serviceType === 'pharmacy' && (() => {
-                                  const patient = patients.find(p => p.id === selectedPatient);
-                                  const diagnosis = diagnoses.find(d => d.patientId === selectedPatient);
-                                  return diagnosis?.prescriptions.map((prescription, index) => (
+                                {service.serviceType === 'lab' && service.items.length > 0 ? (
+                                  service.items.map((item, index) => (
                                     <div key={index} className="text-sm text-muted-foreground">
-                                      • {prescription.drugName} (Qty: {prescription.quantity})
+                                      • {item}
                                     </div>
-                                  ));
+                                  ))
+                                ) : service.serviceType === 'lab' ? (
+                                  <div className="text-sm text-muted-foreground">No lab tests</div>
+                                ) : null}
+                                
+                                {service.serviceType === 'pharmacy' && (() => {
+                                  const diagnosis = diagnoses.find(d => d.patientId === selectedPatient);
+                                  const prescriptions = diagnosis?.prescriptions || [];
+                                  
+                                  return prescriptions.length > 0 ? (
+                                    prescriptions.map((prescription, index) => (
+                                      <div key={index} className="text-sm text-muted-foreground">
+                                        • {prescription.drugName || 'Unknown medication'} (Qty: {prescription.quantity})
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <div className="text-sm text-muted-foreground">No medications</div>
+                                  );
                                 })()}
                               </div>
                             </div>
