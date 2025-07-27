@@ -23,8 +23,11 @@ export default function PharmacyDashboard() {
   const { toast } = useToast();
 
   const pharmacyServices = services.filter(s => s.serviceType === 'pharmacy');
+  console.log('All pharmacy services:', pharmacyServices);
   const pendingPrescriptions = pharmacyServices.filter(s => s.status === 'paid');
+  console.log('Pending prescriptions (paid status):', pendingPrescriptions);
   const dispensedPrescriptions = pharmacyServices.filter(s => s.status === 'dispensed');
+  console.log('Dispensed prescriptions:', dispensedPrescriptions);
   
   // Calculate dispensed today
   const today = new Date();
@@ -37,7 +40,11 @@ export default function PharmacyDashboard() {
   });
 
   const handleDispenseMedication = (serviceId: string) => {
+    console.log('Dispensing medication for service:', serviceId);
+    console.log('User ID:', user?.id);
+    console.log('Services before dispense:', services.filter(s => s.serviceType === 'pharmacy'));
     markServiceAsDispensed(serviceId, user?.id || 'pharmacy-user');
+    console.log('Services after dispense:', services.filter(s => s.serviceType === 'pharmacy'));
     toast({
       title: "Medication dispensed",
       description: "Prescription has been marked as dispensed and moved to dispensed list",
