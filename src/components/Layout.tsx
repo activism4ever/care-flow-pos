@@ -24,6 +24,8 @@ const roleIcons = {
   lab: FlaskConical,
   pharmacy: Pill,
   admin: Shield,
+  hod_lab: FlaskConical,
+  hod_pharmacy: Pill,
 };
 
 const roleColors = {
@@ -32,6 +34,8 @@ const roleColors = {
   lab: 'bg-purple-500',
   pharmacy: 'bg-orange-500',
   admin: 'bg-red-500',
+  hod_lab: 'bg-purple-600',
+  hod_pharmacy: 'bg-orange-600',
 };
 
 export default function Layout({ children, title }: LayoutProps) {
@@ -39,7 +43,7 @@ export default function Layout({ children, title }: LayoutProps) {
   
   if (!user) return null;
 
-  const RoleIcon = roleIcons[user.role];
+  const RoleIcon = roleIcons[user.role] || Shield;
 
   return (
     <div className="min-h-screen bg-background">
