@@ -97,7 +97,6 @@ export default function LabDashboard() {
                 ) : (
                   pendingTests.map((service) => {
                     const patient = patients.find(p => p.id === service.patientId);
-                    const isPaid = isServicePaid(service);
                     
                     return (
                       <div key={service.id} className="p-4 border border-border rounded-lg space-y-3">
@@ -110,9 +109,7 @@ export default function LabDashboard() {
                           </div>
                           <div className="text-right">
                             <p className="font-bold">₦{service.totalAmount.toLocaleString()}</p>
-                            <Badge variant={isPaid ? "default" : "destructive"}>
-                              {isPaid ? "Paid" : "Unpaid"}
-                            </Badge>
+                            <Badge variant="default">Paid</Badge>
                           </div>
                         </div>
                         
@@ -131,23 +128,14 @@ export default function LabDashboard() {
                           </div>
                         </div>
                         
-                        {isPaid ? (
-                          <Button 
-                            onClick={() => handleCompleteTest(service.id)}
-                            variant="success" 
-                            className="w-full"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            Mark as Completed
-                          </Button>
-                        ) : (
-                          <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-lg">
-                            <AlertCircle className="w-4 h-4 text-destructive" />
-                            <span className="text-sm text-destructive">
-                              Waiting for payment confirmation
-                            </span>
-                          </div>
-                        )}
+                        <Button 
+                          onClick={() => handleCompleteTest(service.id)}
+                          variant="success" 
+                          className="w-full"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Mark as Completed
+                        </Button>
                       </div>
                     );
                   })
