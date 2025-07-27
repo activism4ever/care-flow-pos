@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useHospitalStore, availableLabTests, availableMedications } from '@/stores/hospitalStore';
 import { UserPlus, CreditCard, Receipt, Users, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +31,8 @@ export default function CashierDashboard() {
   const [selectedPatient, setSelectedPatient] = useState('');
   const [paymentType, setPaymentType] = useState('');
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [includeConsultation, setIncludeConsultation] = useState(false);
 
   const { 
     registerPatient, 
@@ -405,7 +408,11 @@ export default function CashierDashboard() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="patient-combined">Select Patient</Label>
-                    <Select value={selectedPatient} onValueChange={setSelectedPatient}>
+                    <Select value={selectedPatient} onValueChange={(value) => {
+                      setSelectedPatient(value);
+                      setSelectedServices([]);
+                      setIncludeConsultation(false);
+                    }}>
                       <SelectTrigger>
                         <SelectValue placeholder="Choose patient" />
                       </SelectTrigger>
@@ -421,29 +428,61 @@ export default function CashierDashboard() {
 
                   {selectedPatient && (() => {
                     const unpaidServices = getUnpaidServices(selectedPatient);
-                    const totalAmount = unpaidServices.reduce((sum, service) => sum + service.totalAmount, 0);
                     const consultationFee = 2000; // Standard consultation fee
-                    const grandTotal = totalAmount + consultationFee;
+                    
+                    // Calculate selected total
+                    const selectedServiceTotal = selectedServices.reduce((sum, serviceId) => {
+                      const service = unpaidServices.find(s => s.id === serviceId);
+                      return sum + (service ? service.totalAmount : 0);
+                    }, 0);
+                    const consultationAmount = includeConsultation ? consultationFee : 0;
+                    const grandTotal = selectedServiceTotal + consultationAmount;
 
                     return (
                       <div className="space-y-4">
-                        <div className="border rounded-lg p-4 space-y-3">
-                          <h4 className="font-semibold">Service Breakdown</h4>
+                        <div className="border rounded-lg p-4 space-y-4">
+                          <h4 className="font-semibold">Select Services to Pay</h4>
                           
                           {/* Consultation Fee */}
-                          <div className="flex justify-between items-center py-2 border-b">
-                            <span>Consultation Fee</span>
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <Checkbox
+                                id="consultation"
+                                checked={includeConsultation}
+                                onCheckedChange={(checked) => setIncludeConsultation(!!checked)}
+                              />
+                              <Label htmlFor="consultation" className="font-medium">
+                                Consultation Fee
+                              </Label>
+                            </div>
                             <span className="font-medium">₦{consultationFee.toLocaleString()}</span>
                           </div>
                           
                           {/* Unpaid Services */}
                           {unpaidServices.map((service) => (
-                            <div key={service.id} className="space-y-2">
-                              <div className="flex justify-between items-center py-2 border-b">
-                                <span className="capitalize">{service.serviceType} Services</span>
+                            <div key={service.id} className="border rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center space-x-3">
+                                  <Checkbox
+                                    id={service.id}
+                                    checked={selectedServices.includes(service.id)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setSelectedServices([...selectedServices, service.id]);
+                                      } else {
+                                        setSelectedServices(selectedServices.filter(id => id !== service.id));
+                                      }
+                                    }}
+                                  />
+                                  <Label htmlFor={service.id} className="font-medium capitalize">
+                                    {service.serviceType} Services
+                                  </Label>
+                                </div>
                                 <span className="font-medium">₦{service.totalAmount.toLocaleString()}</span>
                               </div>
-                              <div className="ml-4 space-y-1">
+                              
+                              {/* Service Details */}
+                              <div className="ml-6 space-y-1">
                                 {service.serviceType === 'lab' && service.items.length > 0 ? (
                                   service.items.map((item, index) => {
                                     // Map lab test ID to actual test name
@@ -479,7 +518,7 @@ export default function CashierDashboard() {
                           
                           {/* Total */}
                           <div className="flex justify-between items-center pt-3 border-t-2 font-bold text-lg">
-                            <span>Total Amount</span>
+                            <span>Selected Total</span>
                             <span className="text-primary">₦{grandTotal.toLocaleString()}</span>
                           </div>
                         </div>
@@ -488,35 +527,48 @@ export default function CashierDashboard() {
                           className="w-full" 
                           variant="success" 
                           onClick={() => {
-                            if (unpaidServices.length > 0 || consultationFee > 0) {
-                              const breakdown = [
-                                { service: 'Consultation', amount: consultationFee },
-                                ...unpaidServices.map(s => ({ 
-                                  service: `${s.serviceType} services`, 
-                                  amount: s.totalAmount,
-                                  items: s.items 
-                                }))
-                              ];
+                            if (selectedServices.length > 0 || includeConsultation) {
+                              const breakdown = [];
+                              
+                              if (includeConsultation) {
+                                breakdown.push({ service: 'Consultation', amount: consultationFee });
+                              }
+                              
+                              selectedServices.forEach(serviceId => {
+                                const service = unpaidServices.find(s => s.id === serviceId);
+                                if (service) {
+                                  breakdown.push({ 
+                                    service: `${service.serviceType} services`, 
+                                    amount: service.totalAmount,
+                                    items: service.items 
+                                  });
+                                }
+                              });
                               
                               const receiptNumber = addCombinedPayment(
                                 selectedPatient, 
-                                unpaidServices.map(s => s.id), 
+                                selectedServices, 
                                 grandTotal, 
                                 breakdown
                               );
                               
-                              updatePatientStatus(selectedPatient, 'paid_consultation');
+                              if (includeConsultation) {
+                                updatePatientStatus(selectedPatient, 'paid_consultation');
+                              }
                               
                               toast({
-                                title: "Combined payment processed",
+                                title: "Partial payment processed",
                                 description: `Total: ₦${grandTotal.toLocaleString()}, Receipt: ${receiptNumber}`,
                               });
                               
+                              // Reset state
                               setSelectedPatient('');
+                              setSelectedServices([]);
+                              setIncludeConsultation(false);
                               setActiveTab('receipts');
                             }
                           }}
-                          disabled={unpaidServices.length === 0}
+                          disabled={selectedServices.length === 0 && !includeConsultation}
                         >
                           <CreditCard className="w-4 h-4 mr-2" />
                           Collect Payment - ₦{grandTotal.toLocaleString()}
