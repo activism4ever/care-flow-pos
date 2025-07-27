@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useHospitalStore } from '@/stores/hospitalStore';
+import { useAuthStore } from '@/stores/authStore';
 import { Pill, Clock, CheckCircle, AlertCircle, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
@@ -18,19 +19,25 @@ export default function PharmacyDashboard() {
     getPatientsByStatus 
   } = useHospitalStore();
 
-  // Only show pharmacy services for patients who have paid for medications
-  const paidPharmacyPatients = getPatientsByStatus('pharmacy_referred').filter(p => 
-    getPatientPayments(p.id).some(payment => payment.type === 'pharmacy')
-  );
-  
+  const { user } = useAuthStore();
   const { toast } = useToast();
 
   const pharmacyServices = services.filter(s => s.serviceType === 'pharmacy');
   const pendingPrescriptions = pharmacyServices.filter(s => s.status === 'paid');
   const dispensedPrescriptions = pharmacyServices.filter(s => s.status === 'dispensed');
+  
+  // Calculate dispensed today
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dispensedToday = dispensedPrescriptions.filter(s => {
+    if (!s.completedAt) return false;
+    const serviceDate = new Date(s.completedAt);
+    serviceDate.setHours(0, 0, 0, 0);
+    return serviceDate.getTime() === today.getTime();
+  });
 
   const handleDispenseMedication = (serviceId: string) => {
-    markServiceAsDispensed(serviceId, 'pharmacy-user'); // In real app, use actual user ID
+    markServiceAsDispensed(serviceId, user?.id || 'pharmacy-user');
     toast({
       title: "Medication dispensed",
       description: "Prescription has been marked as dispensed and moved to dispensed list",
@@ -63,7 +70,7 @@ export default function PharmacyDashboard() {
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{dispensedPrescriptions.length}</div>
+              <div className="text-2xl font-bold">{dispensedToday.length}</div>
             </CardContent>
           </Card>
           
