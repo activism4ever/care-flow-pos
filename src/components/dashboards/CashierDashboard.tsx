@@ -428,6 +428,7 @@ export default function CashierDashboard() {
 
                   {selectedPatient && (() => {
                     const unpaidServices = getUnpaidServices(selectedPatient);
+                    console.log('Unpaid services for patient', selectedPatient, ':', unpaidServices);
                     const consultationFee = 2000; // Standard consultation fee
                     
                     // Group services by type for better organization
@@ -586,11 +587,9 @@ export default function CashierDashboard() {
                                 description: `Total: ₦${grandTotal.toLocaleString()}, Receipt: ${receiptNumber}`,
                               });
                               
-                              // Reset state
-                              setSelectedPatient('');
+                              // Reset selections but keep patient selected to see remaining services
                               setSelectedServices([]);
                               setIncludeConsultation(false);
-                              setActiveTab('receipts');
                             }
                           }}
                           disabled={selectedServices.length === 0 && !includeConsultation}
