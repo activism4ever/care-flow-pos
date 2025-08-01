@@ -630,7 +630,7 @@ export default function CashierDashboard() {
                       const isLabService = service.serviceType === 'lab';
                       
                       return (
-                        <div key={service.id} className="p-6 border border-border rounded-lg space-y-4">
+                        <div key={`pending-service-${service.id}`} className="p-6 border border-border rounded-lg space-y-4">
                           <div className="flex items-start justify-between">
                             <div className="space-y-2">
                               <div>
