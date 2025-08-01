@@ -430,6 +430,15 @@ export default function CashierDashboard() {
                     const unpaidServices = getUnpaidServices(selectedPatient);
                     const consultationFee = 2000; // Standard consultation fee
                     
+                    // Group services by type for better organization
+                    const servicesByType = unpaidServices.reduce((acc, service) => {
+                      if (!acc[service.serviceType]) {
+                        acc[service.serviceType] = [];
+                      }
+                      acc[service.serviceType].push(service);
+                      return acc;
+                    }, {} as Record<string, typeof unpaidServices>);
+                    
                     // Calculate selected total
                     const selectedServiceTotal = selectedServices.reduce((sum, serviceId) => {
                       const service = unpaidServices.find(s => s.id === serviceId);
@@ -437,6 +446,15 @@ export default function CashierDashboard() {
                     }, 0);
                     const consultationAmount = includeConsultation ? consultationFee : 0;
                     const grandTotal = selectedServiceTotal + consultationAmount;
+
+                    if (unpaidServices.length === 0 && !includeConsultation) {
+                      return (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p>No unpaid services found for this patient</p>
+                        </div>
+                      );
+                    }
 
                     return (
                       <div className="space-y-4">
@@ -458,61 +476,68 @@ export default function CashierDashboard() {
                             <span className="font-medium">₦{consultationFee.toLocaleString()}</span>
                           </div>
                           
-                          {/* Unpaid Services */}
-                          {unpaidServices.map((service) => (
-                            <div key={service.id} className="border rounded-lg p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center space-x-3">
-                                  <Checkbox
-                                    id={service.id}
-                                    checked={selectedServices.includes(service.id)}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        setSelectedServices([...selectedServices, service.id]);
-                                      } else {
-                                        setSelectedServices(selectedServices.filter(id => id !== service.id));
-                                      }
-                                    }}
-                                  />
-                                  <Label htmlFor={service.id} className="font-medium capitalize">
-                                    {service.serviceType} Services
-                                  </Label>
-                                </div>
-                                <span className="font-medium">₦{service.totalAmount.toLocaleString()}</span>
-                              </div>
-                              
-                              {/* Service Details */}
-                              <div className="ml-6 space-y-1">
-                                {service.serviceType === 'lab' && service.items.length > 0 ? (
-                                  service.items.map((item, index) => {
-                                    // Map lab test ID to actual test name
-                                    const labTest = availableLabTests.find(test => test.id === item || test.name === item);
-                                    const testName = labTest ? labTest.name : item;
-                                    return (
-                                      <div key={index} className="text-sm text-muted-foreground">
-                                        • {testName}
-                                      </div>
-                                    );
-                                  })
-                                ) : service.serviceType === 'lab' ? (
-                                  <div className="text-sm text-muted-foreground">No lab tests</div>
-                                ) : null}
-                                
-                                {service.serviceType === 'pharmacy' && (() => {
-                                  // Get the diagnosis for this patient to access prescription details
-                                  const diagnosis = diagnoses.find(d => d.patientId === selectedPatient);
-                                  
-                                  if (!diagnosis || !diagnosis.prescriptions || diagnosis.prescriptions.length === 0) {
-                                    return <div className="text-sm text-muted-foreground">No medications prescribed</div>;
-                                  }
-                                  
-                                  return diagnosis.prescriptions.map((prescription, index) => (
-                                    <div key={index} className="text-sm text-muted-foreground">
-                                      • {prescription.drugName || "Unnamed Drug"} (Qty: {prescription.quantity || 1})
+                          {/* Unpaid Services grouped by type */}
+                          {Object.entries(servicesByType).map(([serviceType, servicesOfType]) => (
+                            <div key={serviceType} className="space-y-2">
+                              <h5 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                                {serviceType} Services
+                              </h5>
+                              {servicesOfType.map((service) => (
+                                <div key={service.id} className="border rounded-lg p-3">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center space-x-3">
+                                      <Checkbox
+                                        id={service.id}
+                                        checked={selectedServices.includes(service.id)}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            setSelectedServices([...selectedServices, service.id]);
+                                          } else {
+                                            setSelectedServices(selectedServices.filter(id => id !== service.id));
+                                          }
+                                        }}
+                                      />
+                                      <Label htmlFor={service.id} className="font-medium capitalize">
+                                        {service.serviceType} Services
+                                      </Label>
                                     </div>
-                                  ));
-                                })()}
-                              </div>
+                                    <span className="font-medium">₦{service.totalAmount.toLocaleString()}</span>
+                                  </div>
+                                  
+                                  {/* Service Details */}
+                                  <div className="ml-6 space-y-1">
+                                    {service.serviceType === 'lab' && service.items.length > 0 ? (
+                                      service.items.map((item, index) => {
+                                        // Map lab test ID to actual test name
+                                        const labTest = availableLabTests.find(test => test.id === item || test.name === item);
+                                        const testName = labTest ? labTest.name : item;
+                                        return (
+                                          <div key={index} className="text-sm text-muted-foreground">
+                                            • {testName}
+                                          </div>
+                                        );
+                                      })
+                                    ) : service.serviceType === 'lab' ? (
+                                      <div className="text-sm text-muted-foreground">No lab tests</div>
+                                    ) : null}
+                                    
+                                    {service.serviceType === 'pharmacy' && (() => {
+                                      // Get the diagnosis for this patient to access prescription details
+                                      const diagnosis = diagnoses.find(d => d.patientId === selectedPatient);
+                                      
+                                      if (!diagnosis || !diagnosis.prescriptions || diagnosis.prescriptions.length === 0) {
+                                        return <div className="text-sm text-muted-foreground">No medications prescribed</div>;
+                                      }
+                                      
+                                      return diagnosis.prescriptions.map((prescription, index) => (
+                                        <div key={index} className="text-sm text-muted-foreground">
+                                          • {prescription.drugName || "Unnamed Drug"} (Qty: {prescription.quantity || 1})
+                                        </div>
+                                      ));
+                                    })()}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           ))}
                           
