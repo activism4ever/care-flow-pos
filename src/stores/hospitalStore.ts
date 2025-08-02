@@ -15,6 +15,7 @@ interface HospitalState {
   addDiagnosis: (diagnosis: Omit<Diagnosis, 'id' | 'createdAt'>) => void;
   addService: (service: Omit<PatientService, 'id'>) => string;
   updateServiceStatus: (serviceId: string, status: PatientService['status']) => void;
+  updateServicesStatus: (serviceIds: string[], status: PatientService['status']) => void;
   completeService: (serviceId: string) => void;
   markServiceAsPaid: (serviceId: string) => void;
   markServiceAsCompleted: (serviceId: string) => void;
@@ -25,6 +26,7 @@ interface HospitalState {
   getPatientPayments: (patientId: string) => Payment[];
   getPatientServices: (patientId: string) => PatientService[];
   getUnpaidServices: (patientId: string) => PatientService[];
+  getPendingServicesByPatient: (patientId: string) => PatientService[];
   getPaidPendingLabServices: () => PatientService[];
   getPaidPendingPharmacyServices: () => PatientService[];
   getLabRevenue: () => number;
@@ -139,6 +141,14 @@ export const useHospitalStore = create<HospitalState>((set, get) => ({
     }));
   },
 
+  updateServicesStatus: (serviceIds, status) => {
+    set((state) => ({
+      services: state.services.map(s => 
+        serviceIds.includes(s.id) ? { ...s, status } : s
+      ),
+    }));
+  },
+
   completeService: (serviceId) => {
     set((state) => ({
       services: state.services.map(s => 
@@ -168,11 +178,13 @@ export const useHospitalStore = create<HospitalState>((set, get) => ({
       patientId,
       type: 'combined',
       amount: totalAmount,
-      description: 'Combined payment for all services',
+      description: `Combined payment - Selected services only`,
       receiptNumber,
       paidAt: new Date(),
+      breakdown
     };
 
+    // Only update the specifically selected services, not all services for the patient
     set((state) => ({
       payments: [...state.payments, payment],
       services: state.services.map(s => 
@@ -214,6 +226,13 @@ export const useHospitalStore = create<HospitalState>((set, get) => ({
 
   getUnpaidServices: (patientId) => {
     return get().services.filter(s => s.patientId === patientId && s.status === 'pending');
+  },
+
+  getPendingServicesByPatient: (patientId) => {
+    return get().services.filter(s => 
+      s.patientId === patientId && 
+      s.status === 'pending'
+    );
   },
 
   getPaidPendingLabServices: () => {

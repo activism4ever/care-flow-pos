@@ -40,12 +40,14 @@ export default function CashierDashboard() {
     addCombinedPayment,
     updatePatientStatus, 
     updateServiceStatus,
+    updateServicesStatus,
     patients, 
     payments,
     services,
     diagnoses,
     getPatientsByStatus,
-    getUnpaidServices
+    getUnpaidServices,
+    getPendingServicesByPatient
   } = useHospitalStore();
   
   const { toast } = useToast();
@@ -146,23 +148,23 @@ export default function CashierDashboard() {
       if (paymentType === 'consultation') {
         updatePatientStatus(selectedPatient, 'paid_consultation');
       } else {
-        // Mark the corresponding service as paid
-        const serviceToUpdate = services.find(s => 
-          s.patientId === selectedPatient && 
-          s.serviceType === paymentType && 
-          s.status === 'pending'
-        );
-        if (serviceToUpdate) {
-          // Update service status to paid
-          updateServiceStatus(serviceToUpdate.id, 'paid');
-          
-          // Update patient status
-          if (paymentType === 'lab') {
-            updatePatientStatus(selectedPatient, 'lab_referred');
-          } else if (paymentType === 'pharmacy') {
-            updatePatientStatus(selectedPatient, 'pharmacy_referred');
-          }
-        }
+                        // Mark only the first matching service as paid
+                        const serviceToUpdate = services.find(s => 
+                          s.patientId === selectedPatient && 
+                          s.serviceType === paymentType && 
+                          s.status === 'pending'
+                        );
+                        if (serviceToUpdate) {
+                          // Update only this specific service status to paid
+                          updateServiceStatus(serviceToUpdate.id, 'paid');
+                          
+                          // Update patient status only if appropriate
+                          if (paymentType === 'lab') {
+                            updatePatientStatus(selectedPatient, 'lab_referred');
+                          } else if (paymentType === 'pharmacy') {
+                            updatePatientStatus(selectedPatient, 'pharmacy_referred');
+                          }
+                        }
       }
 
       toast({
@@ -427,8 +429,9 @@ export default function CashierDashboard() {
                   </div>
 
                   {selectedPatient && (() => {
-                    const unpaidServices = getUnpaidServices(selectedPatient);
-                    console.log('Unpaid services for patient', selectedPatient, ':', unpaidServices);
+                    // Use the new function to get only pending services
+                    const unpaidServices = getPendingServicesByPatient(selectedPatient);
+                    console.log('Pending services for patient', selectedPatient, ':', unpaidServices);
                     const consultationFee = 2000; // Standard consultation fee
                     
                     // Group services by type for better organization
@@ -571,6 +574,7 @@ export default function CashierDashboard() {
                                 }
                               });
                               
+                              // Process payment for selected services only
                               const receiptNumber = addCombinedPayment(
                                 selectedPatient, 
                                 selectedServices, 
@@ -578,13 +582,14 @@ export default function CashierDashboard() {
                                 breakdown
                               );
                               
+                              // Only update consultation status if it was included in this payment
                               if (includeConsultation) {
                                 updatePatientStatus(selectedPatient, 'paid_consultation');
                               }
                               
                               toast({
-                                title: "Partial payment processed",
-                                description: `Total: ₦${grandTotal.toLocaleString()}, Receipt: ${receiptNumber}`,
+                                title: "Payment processed for selected services",
+                                description: `Paid: ₦${grandTotal.toLocaleString()}, Receipt: ${receiptNumber}. Other unpaid services remain pending.`,
                               });
                               
                               // Reset selections but keep patient selected to see remaining services
