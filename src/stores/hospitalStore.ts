@@ -53,6 +53,7 @@ export const availableMedications = [
 
 let receiptCounter = 1000;
 let patientCounter = 1;
+let serviceCounter = 1;
 
 export const useHospitalStore = create<HospitalState>((set, get) => ({
   patients: [],
@@ -119,7 +120,8 @@ export const useHospitalStore = create<HospitalState>((set, get) => ({
   },
   
   addService: (serviceData) => {
-    const id = `SVC${Date.now()}`;
+    const id = `SVC${serviceCounter.toString().padStart(4, '0')}`;
+    serviceCounter++;
     
     const service: PatientService = {
       ...serviceData,
