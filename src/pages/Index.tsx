@@ -1,39 +1,33 @@
-import { useAuthStore } from '@/stores/authStore';
-import Login from '@/components/Login';
-import CashierDashboard from '@/components/dashboards/CashierDashboard';
-import DoctorDashboard from '@/components/dashboards/DoctorDashboard';
-import LabDashboard from '@/components/dashboards/LabDashboard';
-import PharmacyDashboard from '@/components/dashboards/PharmacyDashboard';
-import AdminDashboard from '@/components/dashboards/AdminDashboard';
-import HodLabDashboard from '@/components/dashboards/HodLabDashboard';
-import HodPharmacyDashboard from '@/components/dashboards/HodPharmacyDashboard';
+import { useEffect } from "react";
+import { useAuth } from "@/components/AuthProvider";
+import { useNavigate } from "react-router-dom";
+import SupabaseCashierDashboard from "@/components/dashboards/SupabaseCashierDashboard";
 
 const Index = () => {
-  const { isAuthenticated, user } = useAuthStore();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
-  if (!isAuthenticated || !user) {
-    return <Login />;
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
   }
 
-  // Route to appropriate dashboard based on user role
-  switch (user.role) {
-    case 'cashier':
-      return <CashierDashboard />;
-    case 'doctor':
-      return <DoctorDashboard />;
-    case 'lab':
-      return <LabDashboard />;
-    case 'pharmacy':
-      return <PharmacyDashboard />;
-    case 'admin':
-      return <AdminDashboard />;
-    case 'hod_lab':
-      return <HodLabDashboard />;
-    case 'hod_pharmacy':
-      return <HodPharmacyDashboard />;
-    default:
-      return <Login />;
+  if (!user) {
+    return null; // Will redirect to auth
   }
+
+  // For now, show cashier dashboard for all authenticated users
+  // Later we can add role-based routing
+  return <CashierDashboard />;
 };
 
 export default Index;
