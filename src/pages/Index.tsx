@@ -27,7 +27,7 @@ const Index = () => {
 
   // For now, show cashier dashboard for all authenticated users
   // Later we can add role-based routing
-  return <CashierDashboard />;
+  return <SupabaseCashierDashboard />;
 };
 
 export default Index;
