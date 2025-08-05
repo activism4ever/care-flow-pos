@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -67,6 +68,33 @@ const Auth = () => {
     setLoading(false);
   };
 
+  const setupAdminUser = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('setup-admin');
+      
+      if (error) {
+        toast({
+          title: "Error creating admin user",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Admin user created!",
+          description: "Email: admin@hospital.com, Password: admin123",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create admin user",
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
@@ -98,6 +126,20 @@ const Auth = () => {
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
+          
+          <div className="mt-4 pt-4 border-t">
+            <Button 
+              onClick={setupAdminUser} 
+              variant="outline" 
+              className="w-full" 
+              disabled={loading}
+            >
+              Create Initial Admin User
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              Click this once to create the initial admin account
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
