@@ -83,11 +83,13 @@ Deno.serve(async (req) => {
     // Insert into profiles table
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
+      .upsert({
         user_id: newUser.user.id,
         username: email,
         name: fullName,
         department: role
+      }, {
+        onConflict: 'user_id'
       })
 
     if (profileError) {
@@ -98,9 +100,11 @@ Deno.serve(async (req) => {
     // Insert role
     const { error: roleInsertError } = await supabaseAdmin
       .from('user_roles')
-      .insert({
+      .upsert({
         user_id: newUser.user.id,
         role: role
+      }, {
+        onConflict: 'user_id,role'
       })
 
     if (roleInsertError) {
