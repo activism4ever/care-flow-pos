@@ -45,20 +45,16 @@ const AdminDashboard = () => {
   const loadUsers = async () => {
     setUsersLoading(true);
     try {
-      // Get all users with their profiles and roles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select(`
-          user_id,
-          name,
-          created_at,
-          user_roles (
-            role
-          )
-        `);
+      // Query the users table directly
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      if (profilesError) {
-        console.error('Error fetching users:', profilesError);
+      console.log('Users:', data, error);
+
+      if (error) {
+        console.error('Error fetching users:', error);
         toast({
           title: "Error",
           description: "Failed to load users",
@@ -67,15 +63,7 @@ const AdminDashboard = () => {
         return;
       }
 
-      const usersWithDetails = profiles?.map(profile => ({
-        id: profile.user_id,
-        email: 'Loading...', // We'll show email from auth if available
-        full_name: profile.name,
-        role: (profile.user_roles as any)?.[0]?.role || 'N/A',
-        created_at: profile.created_at
-      })) || [];
-
-      setUsers(usersWithDetails);
+      setUsers(data || []);
     } catch (error) {
       console.error('Error loading users:', error);
       toast({
@@ -268,9 +256,10 @@ const AdminDashboard = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
+                        <TableHead>Full Name</TableHead>
                         <TableHead>Role</TableHead>
-                        <TableHead>Created</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Created At</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -280,6 +269,7 @@ const AdminDashboard = () => {
                           <TableCell>
                             <span className="capitalize">{user.role.replace('_', ' ')}</span>
                           </TableCell>
+                          <TableCell>{user.email}</TableCell>
                           <TableCell>
                             {new Date(user.created_at).toLocaleDateString()}
                           </TableCell>
@@ -287,7 +277,7 @@ const AdminDashboard = () => {
                       ))}
                       {users.length === 0 && !usersLoading && (
                         <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                          <TableCell colSpan={4} className="text-center text-muted-foreground">
                             No users found
                           </TableCell>
                         </TableRow>

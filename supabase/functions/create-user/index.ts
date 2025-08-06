@@ -115,6 +115,21 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Insert into users table
+    const { error: usersInsertError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: newUser.user.id,
+        full_name: fullName,
+        email: newUser.user.email,
+        role: role
+      })
+
+    if (usersInsertError) {
+      console.error('Error inserting into users table:', usersInsertError)
+      // Don't fail the whole operation, just log the error
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
