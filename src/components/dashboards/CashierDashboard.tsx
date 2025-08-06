@@ -11,6 +11,9 @@ import { useHospitalStore, availableLabTests, availableMedications } from '@/sto
 import { UserPlus, CreditCard, Receipt, Users, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
+import { useAuth } from '@/components/AuthProvider';
+import { LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function CashierDashboard() {
   const [newPatient, setNewPatient] = useState({
@@ -51,6 +54,8 @@ export default function CashierDashboard() {
   } = useHospitalStore();
   
   const { toast } = useToast();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
 
   const handleRegisterPatient = (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,6 +189,23 @@ export default function CashierDashboard() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully",
+      });
+      navigate('/auth');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out",
+        variant: "destructive",
+      });
+    }
+  };
+
   const pendingPaymentPatients = getPatientsByStatus('payment_pending');
   const registeredPatients = getPatientsByStatus('registered');
   const consultationPaidPatients = getPatientsByStatus('paid_consultation');
@@ -192,6 +214,13 @@ export default function CashierDashboard() {
 
   return (
     <Layout title="Cashier Dashboard">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Cashier Dashboard</h1>
+        <Button onClick={handleLogout} variant="outline" size="sm">
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
+      </div>
       <div className="space-y-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

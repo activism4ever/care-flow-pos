@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
+import { LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface CreateUserForm {
   fullName: string;
@@ -36,7 +38,8 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const { toast } = useToast();
-  const { session } = useAuth();
+  const { session, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const handleInputChange = (field: keyof CreateUserForm, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -139,6 +142,23 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully",
+      });
+      navigate('/auth');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out",
+        variant: "destructive",
+      });
+    }
+  };
+
   React.useEffect(() => {
     loadUsers();
   }, []);
@@ -150,6 +170,10 @@ const AdminDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-xl font-bold text-foreground">Hospital POS - Admin Dashboard</h1>
+            <Button onClick={handleLogout} variant="outline" size="sm">
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
       </header>
