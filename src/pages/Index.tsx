@@ -22,6 +22,7 @@ const Index = () => {
       if (!user) return;
 
       try {
+        console.log('Fetching role for user:', user.id);
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
@@ -30,11 +31,36 @@ const Index = () => {
 
         if (error) {
           console.error('Error fetching user role:', error);
+          // If there's an error fetching role, default to cashier for now
+          setUserRole('cashier');
+        } else if (data?.role) {
+          console.log('User role found:', data.role);
+          setUserRole(data.role);
         } else {
-          setUserRole(data?.role || null);
+          console.log('No role found for user, checking if user was just created...');
+          // If no role found, wait a moment and retry once (for newly created users)
+          setTimeout(async () => {
+            const { data: retryData, error: retryError } = await supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            
+            if (retryError) {
+              console.error('Retry error fetching user role:', retryError);
+              setUserRole('cashier'); // Default fallback
+            } else if (retryData?.role) {
+              console.log('User role found on retry:', retryData.role);
+              setUserRole(retryData.role);
+            } else {
+              console.log('Still no role found, defaulting to cashier');
+              setUserRole('cashier'); // Default fallback
+            }
+          }, 1000);
         }
       } catch (error) {
-        console.error('Error fetching user role:', error);
+        console.error('Unexpected error fetching user role:', error);
+        setUserRole('cashier'); // Default fallback
       } finally {
         setRoleLoading(false);
       }
@@ -42,6 +68,8 @@ const Index = () => {
 
     if (user) {
       getUserRole();
+    } else {
+      setRoleLoading(false);
     }
   }, [user]);
 
