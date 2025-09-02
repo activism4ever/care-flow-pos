@@ -27,6 +27,15 @@ interface User {
   created_at: string;
 }
 
+interface UserWithRole {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  created_at: string;
+  user_roles: { role: string }[];
+}
+
 const AdminDashboard = () => {
   const [formData, setFormData] = useState<CreateUserForm>({
     fullName: '',
@@ -35,8 +44,9 @@ const AdminDashboard = () => {
     role: ''
   });
   const [loading, setLoading] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserWithRole[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [roleUpdateLoading, setRoleUpdateLoading] = useState<string | null>(null);
   const { toast } = useToast();
   const { session, signOut } = useAuth();
   const navigate = useNavigate();
@@ -48,16 +58,14 @@ const AdminDashboard = () => {
   const loadUsers = async () => {
     setUsersLoading(true);
     try {
-      // Query the users table directly
-      const { data, error } = await supabase
+      // First get all users
+      const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: false });
 
-      console.log('Users:', data, error);
-
-      if (error) {
-        console.error('Error fetching users:', error);
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
         toast({
           title: "Error",
           description: "Failed to load users",
@@ -66,7 +74,27 @@ const AdminDashboard = () => {
         return;
       }
 
-      setUsers(data || []);
+      // Then get all user roles
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
+        // Continue without roles data
+      }
+
+      // Combine users with their roles
+      const usersWithRoles = usersData?.map(user => {
+        const userRole = rolesData?.find(role => role.user_id === user.id);
+        return {
+          ...user,
+          user_roles: userRole ? [{ role: userRole.role }] : []
+        };
+      }) || [];
+
+      console.log('Users with roles:', usersWithRoles);
+      setUsers(usersWithRoles);
     } catch (error) {
       console.error('Error loading users:', error);
       toast({
@@ -139,6 +167,46 @@ const AdminDashboard = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRoleUpdate = async (userId: string, newRole: string, currentRole: string) => {
+    if (newRole === currentRole) return; // No change needed
+
+    setRoleUpdateLoading(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke('update-user-role', {
+        body: { userId, newRole },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Success",
+        description: "User role updated successfully",
+      });
+
+      // Reload users to show updated roles
+      loadUsers();
+
+    } catch (error: any) {
+      console.error('Error updating user role:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user role",
+        variant: "destructive",
+      });
+    } finally {
+      setRoleUpdateLoading(null);
     }
   };
 
@@ -281,27 +349,61 @@ const AdminDashboard = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Full Name</TableHead>
-                        <TableHead>Role</TableHead>
+                        <TableHead>Current Role</TableHead>
+                        <TableHead>Update Role</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Created At</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell className="font-medium">{user.full_name}</TableCell>
-                          <TableCell>
-                            <span className="capitalize">{user.role.replace('_', ' ')}</span>
-                          </TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>
-                            {new Date(user.created_at).toLocaleDateString()}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {users.map((user) => {
+                        const currentRole = user.user_roles?.[0]?.role || user.role;
+                        const isCurrentUser = user.id === session?.user?.id;
+                        
+                        return (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">{user.full_name}</TableCell>
+                            <TableCell>
+                              <span className="capitalize">{currentRole.replace('_', ' ')}</span>
+                            </TableCell>
+                            <TableCell>
+                              <Select 
+                                value={currentRole} 
+                                onValueChange={(newRole) => handleRoleUpdate(user.id, newRole, currentRole)}
+                                disabled={roleUpdateLoading === user.id}
+                              >
+                                <SelectTrigger className="w-40">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="cashier">Cashier</SelectItem>
+                                  <SelectItem value="doctor">Doctor</SelectItem>
+                                  <SelectItem value="lab">Lab Technician</SelectItem>
+                                  <SelectItem value="pharmacy">Pharmacist</SelectItem>
+                                  <SelectItem value="hod_lab">HOD Lab</SelectItem>
+                                  <SelectItem value="hod_pharmacy">HOD Pharmacy</SelectItem>
+                                  <SelectItem 
+                                    value="admin"
+                                    disabled={isCurrentUser && currentRole === 'admin'}
+                                  >
+                                    Admin {isCurrentUser && currentRole === 'admin' && '(You)'}
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {roleUpdateLoading === user.id && (
+                                <div className="text-sm text-muted-foreground mt-1">Updating...</div>
+                              )}
+                            </TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              {new Date(user.created_at).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                       {users.length === 0 && !usersLoading && (
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground">
+                          <TableCell colSpan={5} className="text-center text-muted-foreground">
                             No users found
                           </TableCell>
                         </TableRow>
