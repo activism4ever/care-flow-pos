@@ -50,11 +50,36 @@ export default function SupabaseCashierDashboard() {
   const { toast } = useToast();
 
   // Supabase hooks
-  const { data: patients = [], isLoading: patientsLoading } = usePatients();
-  const { data: payments = [], isLoading: paymentsLoading } = usePayments();
-  const { data: patientServices = [], isLoading: servicesLoading } = usePatientServices();
-  const { data: labTests = [], isLoading: labTestsLoading } = useLabTests();
-  const { data: medications = [], isLoading: medicationsLoading } = useMedications();
+  const { data: patients = [], isLoading: patientsLoading, error: patientsError } = usePatients();
+  const { data: payments = [], isLoading: paymentsLoading, error: paymentsError } = usePayments();
+  const { data: patientServices = [], isLoading: servicesLoading, error: servicesError } = usePatientServices();
+  const { data: labTests = [], isLoading: labTestsLoading, error: labTestsError } = useLabTests();
+  const { data: medications = [], isLoading: medicationsLoading, error: medicationsError } = useMedications();
+
+  // Debug logging
+  console.log('Dashboard data loading states:', {
+    patientsLoading,
+    paymentsLoading,
+    servicesLoading,
+    labTestsLoading,
+    medicationsLoading
+  });
+
+  console.log('Dashboard data errors:', {
+    patientsError,
+    paymentsError,
+    servicesError,
+    labTestsError,
+    medicationsError
+  });
+
+  console.log('Dashboard data:', {
+    patientsCount: patients.length,
+    paymentsCount: payments.length,
+    servicesCount: patientServices.length,
+    labTestsCount: labTests.length,
+    medicationsCount: medications.length
+  });
 
   const createPatientMutation = useCreatePatient();
   const updatePatientMutation = useUpdatePatient();

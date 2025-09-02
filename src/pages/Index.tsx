@@ -85,21 +85,29 @@ const Index = () => {
     return null; // Will redirect to auth
   }
 
+  console.log('Rendering dashboard for user role:', userRole);
+
   // Role-based dashboard routing
   switch (userRole) {
     case 'admin':
+      console.log('Rendering AdminDashboard');
       return <AdminDashboard />;
     case 'cashier':
+      console.log('Rendering SupabaseCashierDashboard');
       return <SupabaseCashierDashboard />;
     case 'doctor':
+      console.log('Rendering SupabaseCashierDashboard for doctor');
       return <SupabaseCashierDashboard />; // TODO: Create DoctorDashboard
     case 'lab':
     case 'hod_lab':
+      console.log('Rendering SupabaseCashierDashboard for lab');
       return <SupabaseCashierDashboard />; // TODO: Create LabDashboard
     case 'pharmacy':
     case 'hod_pharmacy':
+      console.log('Rendering SupabaseCashierDashboard for pharmacy');
       return <SupabaseCashierDashboard />; // TODO: Create PharmacyDashboard
     default:
+      console.log('Rendering default SupabaseCashierDashboard');
       return <SupabaseCashierDashboard />; // Default fallback
   }
 };
