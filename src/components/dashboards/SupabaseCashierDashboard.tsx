@@ -56,44 +56,25 @@ export default function SupabaseCashierDashboard() {
   const { data: labTests = [], isLoading: labTestsLoading, error: labTestsError } = useLabTests();
   const { data: medications = [], isLoading: medicationsLoading, error: medicationsError } = useMedications();
 
-  // Debug logging
-  console.log('Dashboard data loading states:', {
-    patientsLoading,
-    paymentsLoading,
-    servicesLoading,
-    labTestsLoading,
-    medicationsLoading
-  });
-
-  console.log('Dashboard data errors:', {
-    patientsError,
-    paymentsError,
-    servicesError,
-    labTestsError,
-    medicationsError
-  });
-
-  console.log('Dashboard data:', {
-    patientsCount: patients.length,
-    paymentsCount: payments.length,
-    servicesCount: patientServices.length,
-    labTestsCount: labTests.length,
-    medicationsCount: medications.length
-  });
-
   const createPatientMutation = useCreatePatient();
   const updatePatientMutation = useUpdatePatient();
   const createPaymentMutation = useCreatePayment();
   const createServiceMutation = useCreatePatientService();
   const updateServiceMutation = useUpdatePatientService();
 
-  // Statistics
-  const totalPatients = patients.length;
-  const pendingPaymentPatients = patients.filter(p => p.status === 'payment_pending').length;
-  const totalPayments = payments.length;
-  const totalRevenue = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  // Check if essential data has any errors that would prevent dashboard from working
+  const hasDataErrors = patientsError || paymentsError || servicesError;
+  
+  // Only show loading if data is actually loading AND there are no errors
+  const isLoading = (patientsLoading || paymentsLoading || servicesLoading) && !hasDataErrors;
 
-  const unpaidServices = patientServices.filter(service => service.status === 'pending');
+  // Statistics - use fallbacks if data is not available due to errors
+  const totalPatients = patientsError ? 0 : patients.length;
+  const pendingPaymentPatients = patientsError ? 0 : patients.filter(p => p.status === 'payment_pending').length;
+  const totalPayments = paymentsError ? 0 : payments.length;
+  const totalRevenue = paymentsError ? 0 : payments.reduce((sum, payment) => sum + payment.amount, 0);
+
+  const unpaidServices = servicesError ? [] : patientServices.filter(service => service.status === 'pending');
 
   const handleRegisterPatient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -304,11 +285,37 @@ export default function SupabaseCashierDashboard() {
     });
   };
 
-  if (patientsLoading || paymentsLoading || servicesLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg">Loading dashboard...</div>
       </div>
+    );
+  }
+
+  // Show error message if there are critical data loading errors
+  if (hasDataErrors) {
+    return (
+      <Layout title="Cashier Dashboard">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Cashier Dashboard</h1>
+          <Button onClick={handleLogout} variant="outline">
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
+        </div>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <div className="text-lg text-muted-foreground">Unable to load dashboard data</div>
+            <div className="text-sm text-muted-foreground">
+              This might be due to insufficient permissions or connectivity issues.
+            </div>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Refresh Page
+            </Button>
+          </div>
+        </div>
+      </Layout>
     );
   }
 
