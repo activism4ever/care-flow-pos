@@ -3,13 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useHospitalStore, availableLabTests, availableMedications } from '@/stores/hospitalStore';
 import { useAuthStore } from '@/stores/authStore';
-import { Stethoscope, FileText, FlaskConical, Pill, Clock, CheckCircle } from 'lucide-react';
+import { Stethoscope, FileText, Clock, CheckCircle, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
+import LabTestsSection from '@/components/diagnosis/LabTestsSection';
+import PrescriptionsSection from '@/components/diagnosis/PrescriptionsSection';
+import ConfirmationModal from '@/components/diagnosis/ConfirmationModal';
 
 export default function DoctorDashboard() {
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
@@ -22,6 +24,11 @@ export default function DoctorDashboard() {
     instructions: string;
     price: number;
   }>>([]);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Draft state - could be persisted to localStorage or backend later
+  const [savedDrafts, setSavedDrafts] = useState<Record<string, any>>({});
 
   const { 
     getPatientsByStatus, 
@@ -41,94 +48,173 @@ export default function DoctorDashboard() {
   );
   const diagnosedPatients = getPatientsByStatus('diagnosed');
 
-  const handleDiagnosis = () => {
-    if (!selectedPatient || !diagnosis) {
+  const validateForm = () => {
+    const errors: string[] = [];
+    
+    if (!selectedPatient) errors.push("Please select a patient");
+    if (!diagnosis.trim()) errors.push("Please enter a diagnosis");
+    
+    // Check for prescriptions with missing dosage
+    const invalidPrescriptions = prescriptions.filter(p => p.drugName && !p.dosage);
+    if (invalidPrescriptions.length > 0) {
+      errors.push("Some medications are missing dosage information");
+    }
+    
+    return errors;
+  };
+
+  const handleCompleteDiagnosis = () => {
+    const errors = validateForm();
+    if (errors.length > 0) {
       toast({
-        title: "Please select a patient and enter diagnosis",
+        title: "Please fix the following issues:",
+        description: errors.join(", "),
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmDiagnosis = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      const patient = patients.find(p => p.id === selectedPatient);
+      if (!patient) return;
+
+      // Create prescription objects
+      const prescriptionObjects = prescriptions.map((p, index) => ({
+        id: `PRESC${Date.now()}_${index}`,
+        ...p,
+      }));
+
+      // Add diagnosis
+      addDiagnosis({
+        patientId: selectedPatient,
+        doctorId: user!.id,
+        diagnosis,
+        labTests: selectedLabTests,
+        prescriptions: prescriptionObjects,
+      });
+
+      // Update patient status
+      updatePatientStatus(selectedPatient, 'diagnosed');
+
+      // Create services if lab tests or prescriptions are added
+      if (selectedLabTests.length > 0) {
+        const labTotal = selectedLabTests.reduce((sum, testId) => {
+          const test = availableLabTests.find(t => t.id === testId);
+          return sum + (test?.price || 0);
+        }, 0);
+
+        addService({
+          patientId: selectedPatient,
+          serviceType: 'lab',
+          items: selectedLabTests,
+          totalAmount: labTotal,
+          status: 'pending',
+        });
+      }
+
+      if (prescriptions.length > 0) {
+        const pharmacyTotal = prescriptions.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+        
+        addService({
+          patientId: selectedPatient,
+          serviceType: 'pharmacy',
+          items: prescriptions.map(p => p.drugName),
+          totalAmount: pharmacyTotal,
+          status: 'pending',
+        });
+      }
+
+      // Clear saved draft
+      if (selectedPatient && savedDrafts[selectedPatient]) {
+        const newDrafts = { ...savedDrafts };
+        delete newDrafts[selectedPatient];
+        setSavedDrafts(newDrafts);
+      }
+
+      toast({
+        title: "Diagnosis completed successfully",
+        description: "Patient has been diagnosed and referred to appropriate services",
+      });
+
+      // Reset form
+      resetForm();
+      setShowConfirmation(false);
+    } catch (error) {
+      toast({
+        title: "Error completing diagnosis",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveDraft = () => {
+    if (!selectedPatient) {
+      toast({
+        title: "Please select a patient to save draft",
         variant: "destructive",
       });
       return;
     }
 
-    const patient = patients.find(p => p.id === selectedPatient);
-    if (!patient) return;
+    const draftData = {
+      diagnosis,
+      selectedLabTests,
+      prescriptions,
+      savedAt: new Date().toISOString(),
+    };
 
-    // Create prescription objects
-    const prescriptionObjects = prescriptions.map((p, index) => ({
-      id: `PRESC${Date.now()}_${index}`,
-      ...p,
+    setSavedDrafts(prev => ({
+      ...prev,
+      [selectedPatient]: draftData
     }));
 
-    // Add diagnosis
-    addDiagnosis({
-      patientId: selectedPatient,
-      doctorId: user!.id,
-      diagnosis,
-      labTests: selectedLabTests,
-      prescriptions: prescriptionObjects,
-    });
-
-    // Update patient status
-    updatePatientStatus(selectedPatient, 'diagnosed');
-
-    // Create services if lab tests or prescriptions are added
-    if (selectedLabTests.length > 0) {
-      const labTotal = selectedLabTests.reduce((sum, testId) => {
-        const test = availableLabTests.find(t => t.id === testId);
-        return sum + (test?.price || 0);
-      }, 0);
-
-      addService({
-        patientId: selectedPatient,
-        serviceType: 'lab',
-        items: selectedLabTests,
-        totalAmount: labTotal,
-        status: 'pending',
-      });
-    }
-
-    if (prescriptions.length > 0) {
-      const pharmacyTotal = prescriptions.reduce((sum, p) => sum + (p.price * p.quantity), 0);
-      
-      addService({
-        patientId: selectedPatient,
-        serviceType: 'pharmacy',
-        items: prescriptions.map(p => p.drugName),
-        totalAmount: pharmacyTotal,
-        status: 'pending',
-      });
-    }
-
     toast({
-      title: "Diagnosis completed",
-      description: "Patient has been diagnosed and referred to appropriate services",
+      title: "Draft saved successfully",
+      description: "You can continue working on this diagnosis later",
     });
+  };
 
-    // Reset form
+  const loadDraft = (patientId: string) => {
+    const draft = savedDrafts[patientId];
+    if (draft) {
+      setDiagnosis(draft.diagnosis || '');
+      setSelectedLabTests(draft.selectedLabTests || []);
+      setPrescriptions(draft.prescriptions || []);
+      
+      toast({
+        title: "Draft loaded",
+        description: `Loaded draft from ${new Date(draft.savedAt).toLocaleDateString()}`,
+      });
+    }
+  };
+
+  const resetForm = () => {
     setSelectedPatient(null);
     setDiagnosis('');
     setSelectedLabTests([]);
     setPrescriptions([]);
   };
 
-  const addPrescription = () => {
-    setPrescriptions([...prescriptions, {
-      drugName: '',
-      dosage: '',
-      quantity: 1,
-      instructions: '',
-      price: 0,
-    }]);
-  };
-
-  const updatePrescription = (index: number, field: string, value: any) => {
-    const updated = [...prescriptions];
-    updated[index] = { ...updated[index], [field]: value };
-    setPrescriptions(updated);
-  };
-
-  const removePrescription = (index: number) => {
-    setPrescriptions(prescriptions.filter((_, i) => i !== index));
+  const handlePatientSelect = (patientId: string) => {
+    setSelectedPatient(patientId);
+    // Check if there's a saved draft for this patient
+    if (savedDrafts[patientId]) {
+      loadDraft(patientId);
+    } else {
+      // Reset form for new patient
+      setDiagnosis('');
+      setSelectedLabTests([]);
+      setPrescriptions([]);
+    }
   };
 
   return (
@@ -192,11 +278,18 @@ export default function DoctorDashboard() {
                           ? 'bg-primary/10 border-primary' 
                           : 'hover:bg-muted/50'
                       }`}
-                      onClick={() => setSelectedPatient(patient.id)}
+                      onClick={() => handlePatientSelect(patient.id)}
                     >
                       <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{patient.name}</p>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{patient.name}</p>
+                            {savedDrafts[patient.id] && (
+                              <Badge variant="secondary" className="text-xs">
+                                Draft Saved
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-sm text-muted-foreground">
                             {patient.age} years • {patient.gender} • {patient.contact}
                           </p>
@@ -243,110 +336,38 @@ export default function DoctorDashboard() {
                   </div>
 
                   {/* Lab Tests */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <FlaskConical className="w-4 h-4" />
-                      <Label>Lab Tests Required</Label>
-                    </div>
-                    <div className="space-y-2">
-                      {availableLabTests.map((test) => (
-                        <div key={test.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={test.id}
-                            checked={selectedLabTests.includes(test.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedLabTests([...selectedLabTests, test.id]);
-                              } else {
-                                setSelectedLabTests(selectedLabTests.filter(id => id !== test.id));
-                              }
-                            }}
-                          />
-                          <Label htmlFor={test.id} className="text-sm">
-                            {test.name} - ₦{test.price.toLocaleString()}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <LabTestsSection
+                    availableLabTests={availableLabTests}
+                    selectedLabTests={selectedLabTests}
+                    onSelectionChange={setSelectedLabTests}
+                  />
 
                   {/* Prescriptions */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Pill className="w-4 h-4" />
-                        <Label>Prescriptions</Label>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={addPrescription}>
-                        Add Medication
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {prescriptions.map((prescription, index) => (
-                        <div key={index} className="p-3 border border-border rounded-lg space-y-2">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-xs">Medication</Label>
-                              <select
-                                value={prescription.drugName}
-                                onChange={(e) => {
-                                  const med = availableMedications.find(m => m.name === e.target.value);
-                                  updatePrescription(index, 'drugName', e.target.value);
-                                  updatePrescription(index, 'price', med?.price || 0);
-                                }}
-                                className="w-full p-2 border border-border rounded text-sm"
-                              >
-                                <option value="">Select medication</option>
-                                {availableMedications.map((med) => (
-                                  <option key={med.id} value={med.name}>
-                                    {med.name} - ₦{med.price}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <Label className="text-xs">Quantity</Label>
-                              <input
-                                type="number"
-                                value={prescription.quantity}
-                                onChange={(e) => updatePrescription(index, 'quantity', parseInt(e.target.value) || 1)}
-                                className="w-full p-2 border border-border rounded text-sm"
-                                min="1"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <Label className="text-xs">Dosage & Instructions</Label>
-                            <input
-                              type="text"
-                              value={prescription.instructions}
-                              onChange={(e) => updatePrescription(index, 'instructions', e.target.value)}
-                              placeholder="e.g., 2 tablets twice daily after meals"
-                              className="w-full p-2 border border-border rounded text-sm"
-                            />
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium">
-                              Total: ₦{(prescription.price * prescription.quantity).toLocaleString()}
-                            </span>
-                            <Button 
-                              variant="destructive" 
-                              size="sm" 
-                              onClick={() => removePrescription(index)}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <PrescriptionsSection
+                    availableMedications={availableMedications}
+                    prescriptions={prescriptions}
+                    onPrescriptionsChange={setPrescriptions}
+                  />
 
-                  <Button onClick={handleDiagnosis} variant="medical" className="w-full">
-                    <Stethoscope className="w-4 h-4" />
-                    Complete Diagnosis
-                  </Button>
+                  {/* Action Buttons */}
+                  <div className="flex gap-3">
+                    <Button 
+                      onClick={handleSaveDraft} 
+                      variant="outline" 
+                      className="flex-1"
+                    >
+                      <Save className="w-4 h-4" />
+                      Save Draft
+                    </Button>
+                    <Button 
+                      onClick={handleCompleteDiagnosis} 
+                      variant="medical" 
+                      className="flex-1"
+                    >
+                      <Stethoscope className="w-4 h-4" />
+                      Complete Diagnosis
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <div className="text-center text-muted-foreground py-8">
@@ -357,6 +378,21 @@ export default function DoctorDashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {selectedPatient && (
+        <ConfirmationModal
+          open={showConfirmation}
+          onOpenChange={setShowConfirmation}
+          patient={patients.find(p => p.id === selectedPatient)!}
+          diagnosis={diagnosis}
+          selectedLabTests={selectedLabTests}
+          availableLabTests={availableLabTests}
+          prescriptions={prescriptions}
+          onConfirm={handleConfirmDiagnosis}
+          loading={isSubmitting}
+        />
+      )}
     </Layout>
   );
 }
